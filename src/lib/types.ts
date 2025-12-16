@@ -17,6 +17,8 @@ export interface Student {
   verifiedAt?: string;
   verifiedBy?: string;
   appliedJobs: string[];
+  txHash?: string;
+  verificationTxHash?: string;
 }
 
 export interface Job {
@@ -33,6 +35,7 @@ export interface Job {
   applications: string[]; // wallet addresses
   shortlisted: string[];
   referred: string[];
+  txHash?: string;
 }
 
 export interface Application {
@@ -40,6 +43,7 @@ export interface Application {
   studentAddress: string;
   appliedAt: string;
   status: 'pending' | 'shortlisted' | 'referred' | 'rejected';
+  txHash?: string;
 }
 
 export interface BlockchainTransaction {

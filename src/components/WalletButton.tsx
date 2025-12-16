@@ -1,13 +1,20 @@
 import { useWallet } from '@/contexts/WalletContext';
 import { Button } from '@/components/ui/button';
-import { Wallet, LogOut, Loader2 } from 'lucide-react';
+import { Wallet, LogOut, Loader2, Globe, ExternalLink } from 'lucide-react';
 import { motion } from 'framer-motion';
+import { cn } from '@/lib/utils';
 
 export function WalletButton() {
-  const { connected, address, connecting, connect, disconnect } = useWallet();
+  const { connected, address, connecting, connect, disconnect, network } = useWallet();
 
   const truncateAddress = (addr: string) => {
     return `${addr.slice(0, 6)}...${addr.slice(-4)}`;
+  };
+
+  const openExplorer = () => {
+    if (address) {
+      window.open(`https://explorer.aptoslabs.com/account/${address}?network=devnet`, '_blank');
+    }
   };
 
   if (connected && address) {
@@ -15,15 +22,33 @@ export function WalletButton() {
       <motion.div
         initial={{ opacity: 0, scale: 0.9 }}
         animate={{ opacity: 1, scale: 1 }}
-        className="flex items-center gap-3"
+        className="flex items-center gap-2"
       >
-        <div className="flex items-center gap-2 px-4 py-2 rounded-lg bg-success/10 border border-success/20">
+        {/* Network Badge */}
+        <div className={cn(
+          "flex items-center gap-1.5 px-3 py-1.5 rounded-lg text-xs font-medium",
+          network === 'Devnet' 
+            ? "bg-success/10 text-success border border-success/20"
+            : "bg-warning/10 text-warning border border-warning/20"
+        )}>
+          <Globe className="w-3 h-3" />
+          {network || 'Unknown'}
+        </div>
+
+        {/* Address */}
+        <button
+          onClick={openExplorer}
+          className="flex items-center gap-2 px-3 py-1.5 rounded-lg bg-card border border-border hover:border-primary/50 transition-colors group"
+        >
           <div className="w-2 h-2 rounded-full bg-success animate-pulse" />
           <span className="text-sm font-medium text-foreground">
             {truncateAddress(address)}
           </span>
-        </div>
-        <Button variant="ghost" size="icon" onClick={disconnect}>
+          <ExternalLink className="w-3 h-3 text-muted-foreground group-hover:text-primary transition-colors" />
+        </button>
+
+        {/* Disconnect */}
+        <Button variant="ghost" size="icon" onClick={disconnect} className="h-8 w-8">
           <LogOut className="w-4 h-4" />
         </Button>
       </motion.div>

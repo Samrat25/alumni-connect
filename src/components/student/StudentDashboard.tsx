@@ -2,12 +2,13 @@ import { useState, useEffect } from 'react';
 import { motion } from 'framer-motion';
 import { useWallet } from '@/contexts/WalletContext';
 import { storage } from '@/lib/storage';
-import { blockchain } from '@/lib/blockchain';
+import { aptosTransactions, getExplorerUrl } from '@/lib/aptos';
 import { Student, Job } from '@/lib/types';
 import { Button } from '@/components/ui/button';
 import { StatusBadge } from '@/components/StatusBadge';
 import { Input } from '@/components/ui/input';
 import { Label } from '@/components/ui/label';
+import { showTransactionToast, dismissToast } from '@/components/TransactionToast';
 import { toast } from 'sonner';
 import {
   FileText,
@@ -19,6 +20,8 @@ import {
   MapPin,
   Calendar,
   ArrowLeft,
+  ExternalLink,
+  Hash,
 } from 'lucide-react';
 import { cn } from '@/lib/utils';
 
@@ -70,12 +73,24 @@ export function StudentDashboard() {
     if (!address || !resumeFile) return;
 
     setIsUploading(true);
+    const toastId = showTransactionToast({
+      type: 'pending',
+      message: 'Waiting for wallet signature...'
+    });
+
     try {
       // Generate hash from file
       const hash = await storage.generateHash(resumeFile);
 
-      // Submit hash to blockchain
-      await blockchain.submitResumeHash(address, hash);
+      // Sign transaction with Petra wallet
+      const tx = await aptosTransactions.submitResume(hash, formData.name);
+
+      dismissToast(toastId);
+      showTransactionToast({
+        type: 'success',
+        message: 'Resume submitted on-chain!',
+        txHash: tx.hash
+      });
 
       // Save student data
       const newStudent: Student = {
@@ -86,14 +101,17 @@ export function StudentDashboard() {
         resumeStatus: 'unverified',
         submittedAt: new Date().toISOString(),
         appliedJobs: student?.appliedJobs || [],
+        txHash: tx.hash,
       };
 
       storage.saveStudent(newStudent);
       setStudent(newStudent);
-      toast.success('Resume submitted successfully! Awaiting verification.');
-    } catch (error) {
-      console.error('Error submitting resume:', error);
-      toast.error('Failed to submit resume');
+    } catch (error: any) {
+      dismissToast(toastId);
+      showTransactionToast({
+        type: 'error',
+        message: error.message || 'Transaction failed'
+      });
     } finally {
       setIsUploading(false);
     }
@@ -107,9 +125,21 @@ export function StudentDashboard() {
     }
 
     setIsApplying(jobId);
+    const toastId = showTransactionToast({
+      type: 'pending',
+      message: 'Waiting for wallet signature...'
+    });
+
     try {
-      // Record application on-chain
-      await blockchain.applyToJob(address, jobId);
+      // Sign transaction with Petra wallet
+      const tx = await aptosTransactions.applyToJob(jobId, student.resumeHash || '');
+
+      dismissToast(toastId);
+      showTransactionToast({
+        type: 'success',
+        message: 'Application submitted on-chain!',
+        txHash: tx.hash
+      });
 
       // Update local storage
       const job = storage.getJob(jobId);
@@ -130,13 +160,16 @@ export function StudentDashboard() {
         studentAddress: address,
         appliedAt: new Date().toISOString(),
         status: 'pending',
+        txHash: tx.hash,
       });
 
       setJobs(storage.getJobs());
-      toast.success('Application submitted successfully!');
-    } catch (error) {
-      console.error('Error applying to job:', error);
-      toast.error('Failed to submit application');
+    } catch (error: any) {
+      dismissToast(toastId);
+      showTransactionToast({
+        type: 'error',
+        message: error.message || 'Transaction failed'
+      });
     } finally {
       setIsApplying(null);
     }
@@ -271,7 +304,7 @@ export function StudentDashboard() {
                   <div className="flex items-center gap-3 mb-2">
                     <CheckCircle className="w-5 h-5 text-success" />
                     <span className="font-medium text-foreground">
-                      Resume Submitted
+                      Resume Submitted On-Chain
                     </span>
                   </div>
                   <p className="text-sm text-muted-foreground">
@@ -279,11 +312,31 @@ export function StudentDashboard() {
                   </p>
                 </div>
 
-                <div className="p-4 rounded-xl bg-muted/50">
-                  <p className="text-xs text-muted-foreground mb-1">Resume Hash (On-chain)</p>
-                  <code className="text-xs font-mono text-foreground break-all">
-                    {student.resumeHash.slice(0, 32)}...
-                  </code>
+                <div className="p-4 rounded-xl bg-muted/50 space-y-3">
+                  <div>
+                    <p className="text-xs text-muted-foreground mb-1 flex items-center gap-1">
+                      <Hash className="w-3 h-3" />
+                      Resume Hash (SHA-256)
+                    </p>
+                    <code className="text-xs font-mono text-foreground break-all">
+                      {student.resumeHash.slice(0, 32)}...
+                    </code>
+                  </div>
+                  
+                  {student.txHash && (
+                    <div>
+                      <p className="text-xs text-muted-foreground mb-1">Transaction</p>
+                      <a
+                        href={getExplorerUrl(student.txHash)}
+                        target="_blank"
+                        rel="noopener noreferrer"
+                        className="inline-flex items-center gap-1 text-xs text-primary hover:underline"
+                      >
+                        {student.txHash.slice(0, 20)}...
+                        <ExternalLink className="w-3 h-3" />
+                      </a>
+                    </div>
+                  )}
                 </div>
 
                 <div className="text-sm text-muted-foreground">
@@ -338,6 +391,12 @@ export function StudentDashboard() {
                   </label>
                 </div>
 
+                <div className="p-3 rounded-lg bg-primary/5 border border-primary/20">
+                  <p className="text-xs text-muted-foreground">
+                    <strong className="text-foreground">Signing with Petra:</strong> Your resume hash will be recorded on Aptos Devnet. You'll need to approve the transaction in your wallet.
+                  </p>
+                </div>
+
                 <Button
                   variant="student"
                   className="w-full"
@@ -347,12 +406,12 @@ export function StudentDashboard() {
                   {isUploading ? (
                     <>
                       <Loader2 className="w-4 h-4 animate-spin" />
-                      Submitting to Blockchain...
+                      Awaiting Signature...
                     </>
                   ) : (
                     <>
                       <Upload className="w-4 h-4" />
-                      Submit Resume
+                      Sign & Submit Resume
                     </>
                   )}
                 </Button>
@@ -430,10 +489,10 @@ export function StudentDashboard() {
                           {isApplying === job.id ? (
                             <>
                               <Loader2 className="w-4 h-4 animate-spin" />
-                              Applying...
+                              Signing...
                             </>
                           ) : (
-                            'Apply Now'
+                            'Sign & Apply'
                           )}
                         </Button>
                       )}
