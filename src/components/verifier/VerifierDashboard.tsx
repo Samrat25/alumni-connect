@@ -2,11 +2,11 @@ import { useState, useEffect } from 'react';
 import { motion } from 'framer-motion';
 import { useWallet } from '@/contexts/WalletContext';
 import { storage } from '@/lib/storage';
-import { blockchain } from '@/lib/blockchain';
+import { aptosTransactions, getExplorerUrl } from '@/lib/aptos';
 import { Student } from '@/lib/types';
 import { Button } from '@/components/ui/button';
 import { StatusBadge } from '@/components/StatusBadge';
-import { toast } from 'sonner';
+import { showTransactionToast, dismissToast } from '@/components/TransactionToast';
 import {
   ShieldCheck,
   FileText,
@@ -20,6 +20,7 @@ import {
   GraduationCap,
   Calendar,
   Hash,
+  ExternalLink,
 } from 'lucide-react';
 import { cn } from '@/lib/utils';
 
@@ -28,6 +29,7 @@ export function VerifierDashboard() {
   const [students, setStudents] = useState<Student[]>([]);
   const [selectedStudent, setSelectedStudent] = useState<Student | null>(null);
   const [isProcessing, setIsProcessing] = useState(false);
+  const [processingAction, setProcessingAction] = useState<'verify' | 'reject' | null>(null);
   const [filter, setFilter] = useState<'all' | 'unverified' | 'verified' | 'rejected'>('unverified');
 
   useEffect(() => {
@@ -50,9 +52,25 @@ export function VerifierDashboard() {
     if (!address || !selectedStudent) return;
 
     setIsProcessing(true);
+    setProcessingAction(approved ? 'verify' : 'reject');
+    
+    const toastId = showTransactionToast({
+      type: 'pending',
+      message: `Waiting for wallet signature to ${approved ? 'verify' : 'reject'} resume...`
+    });
+
     try {
-      // Record verification on blockchain
-      await blockchain.verifyResume(address, selectedStudent.walletAddress, approved);
+      // Sign transaction with Petra wallet
+      const tx = approved
+        ? await aptosTransactions.verifyResume(selectedStudent.walletAddress, selectedStudent.resumeHash || '')
+        : await aptosTransactions.rejectResume(selectedStudent.walletAddress, selectedStudent.resumeHash || '');
+
+      dismissToast(toastId);
+      showTransactionToast({
+        type: 'success',
+        message: approved ? 'Resume verified on-chain!' : 'Resume rejected on-chain!',
+        txHash: tx.hash
+      });
 
       // Update local storage
       const updatedStudent: Student = {
@@ -60,22 +78,21 @@ export function VerifierDashboard() {
         resumeStatus: approved ? 'verified' : 'rejected',
         verifiedAt: new Date().toISOString(),
         verifiedBy: address,
+        verificationTxHash: tx.hash,
       };
 
       storage.saveStudent(updatedStudent);
       loadStudents();
       setSelectedStudent(null);
-      
-      toast.success(
-        approved
-          ? 'Resume verified successfully!'
-          : 'Resume rejected successfully!'
-      );
-    } catch (error) {
-      console.error('Error verifying resume:', error);
-      toast.error('Failed to process verification');
+    } catch (error: any) {
+      dismissToast(toastId);
+      showTransactionToast({
+        type: 'error',
+        message: error.message || 'Transaction failed'
+      });
     } finally {
       setIsProcessing(false);
+      setProcessingAction(null);
     }
   };
 
@@ -92,7 +109,7 @@ export function VerifierDashboard() {
             Verifier Dashboard
           </h1>
           <p className="text-muted-foreground">
-            Review and verify student resumes on-chain
+            Review and verify student resumes with signed transactions
           </p>
         </div>
       </div>
@@ -204,7 +221,7 @@ export function VerifierDashboard() {
               </div>
 
               {/* Resume Info */}
-              <div className="p-4 rounded-xl bg-muted/50">
+              <div className="p-4 rounded-xl bg-muted/50 space-y-3">
                 <p className="text-xs text-muted-foreground mb-1">Resume File</p>
                 <p className="font-medium text-foreground text-sm mb-3">
                   {selectedStudent.resumeFileName}
@@ -212,50 +229,71 @@ export function VerifierDashboard() {
                 <div className="flex items-start gap-2">
                   <Hash className="w-4 h-4 text-muted-foreground mt-0.5" />
                   <div>
-                    <p className="text-xs text-muted-foreground mb-1">On-chain Hash</p>
+                    <p className="text-xs text-muted-foreground mb-1">On-chain Hash (SHA-256)</p>
                     <code className="text-xs font-mono text-foreground break-all">
                       {selectedStudent.resumeHash}
                     </code>
                   </div>
                 </div>
+                {selectedStudent.txHash && (
+                  <div className="pt-2">
+                    <p className="text-xs text-muted-foreground mb-1">Submission Transaction</p>
+                    <a
+                      href={getExplorerUrl(selectedStudent.txHash)}
+                      target="_blank"
+                      rel="noopener noreferrer"
+                      className="inline-flex items-center gap-1 text-xs text-primary hover:underline"
+                    >
+                      {selectedStudent.txHash.slice(0, 24)}...
+                      <ExternalLink className="w-3 h-3" />
+                    </a>
+                  </div>
+                )}
               </div>
 
               {/* Actions */}
               {selectedStudent.resumeStatus === 'unverified' && (
-                <div className="flex gap-3">
-                  <Button
-                    variant="success"
-                    className="flex-1"
-                    onClick={() => handleVerify(true)}
-                    disabled={isProcessing}
-                  >
-                    {isProcessing ? (
-                      <Loader2 className="w-4 h-4 animate-spin" />
-                    ) : (
-                      <CheckCircle className="w-4 h-4" />
-                    )}
-                    Verify Resume
-                  </Button>
-                  <Button
-                    variant="destructive"
-                    className="flex-1"
-                    onClick={() => handleVerify(false)}
-                    disabled={isProcessing}
-                  >
-                    {isProcessing ? (
-                      <Loader2 className="w-4 h-4 animate-spin" />
-                    ) : (
-                      <XCircle className="w-4 h-4" />
-                    )}
-                    Reject
-                  </Button>
+                <div className="space-y-3">
+                  <div className="p-3 rounded-lg bg-primary/5 border border-primary/20">
+                    <p className="text-xs text-muted-foreground">
+                      <strong className="text-foreground">Signed Verification:</strong> Your decision will be recorded on Aptos Devnet with your wallet signature.
+                    </p>
+                  </div>
+                  <div className="flex gap-3">
+                    <Button
+                      variant="success"
+                      className="flex-1"
+                      onClick={() => handleVerify(true)}
+                      disabled={isProcessing}
+                    >
+                      {processingAction === 'verify' ? (
+                        <Loader2 className="w-4 h-4 animate-spin" />
+                      ) : (
+                        <CheckCircle className="w-4 h-4" />
+                      )}
+                      Sign & Verify
+                    </Button>
+                    <Button
+                      variant="destructive"
+                      className="flex-1"
+                      onClick={() => handleVerify(false)}
+                      disabled={isProcessing}
+                    >
+                      {processingAction === 'reject' ? (
+                        <Loader2 className="w-4 h-4 animate-spin" />
+                      ) : (
+                        <XCircle className="w-4 h-4" />
+                      )}
+                      Sign & Reject
+                    </Button>
+                  </div>
                 </div>
               )}
 
               {selectedStudent.resumeStatus !== 'unverified' && (
-                <div className="p-4 rounded-xl bg-muted/50 text-center">
+                <div className="p-4 rounded-xl bg-muted/50 text-center space-y-2">
                   <p className="text-sm text-muted-foreground">
-                    This resume has already been{' '}
+                    This resume has been{' '}
                     <span className={cn(
                       'font-medium',
                       selectedStudent.resumeStatus === 'verified' ? 'text-success' : 'text-destructive'
@@ -264,9 +302,20 @@ export function VerifierDashboard() {
                     </span>
                   </p>
                   {selectedStudent.verifiedAt && (
-                    <p className="text-xs text-muted-foreground mt-1">
+                    <p className="text-xs text-muted-foreground">
                       on {new Date(selectedStudent.verifiedAt).toLocaleString()}
                     </p>
+                  )}
+                  {selectedStudent.verificationTxHash && (
+                    <a
+                      href={getExplorerUrl(selectedStudent.verificationTxHash)}
+                      target="_blank"
+                      rel="noopener noreferrer"
+                      className="inline-flex items-center gap-1 text-xs text-primary hover:underline"
+                    >
+                      View verification transaction
+                      <ExternalLink className="w-3 h-3" />
+                    </a>
                   )}
                 </div>
               )}

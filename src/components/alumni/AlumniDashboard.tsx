@@ -2,14 +2,14 @@ import { useState, useEffect } from 'react';
 import { motion, AnimatePresence } from 'framer-motion';
 import { useWallet } from '@/contexts/WalletContext';
 import { storage } from '@/lib/storage';
-import { blockchain } from '@/lib/blockchain';
+import { aptosTransactions, getExplorerUrl } from '@/lib/aptos';
 import { Student, Job, Application } from '@/lib/types';
 import { Button } from '@/components/ui/button';
 import { StatusBadge } from '@/components/StatusBadge';
 import { Input } from '@/components/ui/input';
 import { Label } from '@/components/ui/label';
 import { Textarea } from '@/components/ui/textarea';
-import { toast } from 'sonner';
+import { showTransactionToast, dismissToast } from '@/components/TransactionToast';
 import {
   Briefcase,
   Plus,
@@ -26,6 +26,7 @@ import {
   Mail,
   GraduationCap,
   CheckCircle,
+  ExternalLink,
 } from 'lucide-react';
 import { cn } from '@/lib/utils';
 
@@ -38,6 +39,7 @@ export function AlumniDashboard() {
   const [selectedJob, setSelectedJob] = useState<Job | null>(null);
   const [selectedStudent, setSelectedStudent] = useState<Student | null>(null);
   const [isCreating, setIsCreating] = useState(false);
+  const [processingAction, setProcessingAction] = useState<{ jobId: string; studentAddress: string; action: string } | null>(null);
 
   // Job form state
   const [jobForm, setJobForm] = useState({
@@ -68,11 +70,23 @@ export function AlumniDashboard() {
     if (!address) return;
 
     setIsCreating(true);
+    const toastId = showTransactionToast({
+      type: 'pending',
+      message: 'Waiting for wallet signature to create job...'
+    });
+
     try {
       const jobId = `job_${Date.now()}_${Math.random().toString(36).slice(2, 8)}`;
 
-      // Record job creation on blockchain
-      await blockchain.createJob(address, jobId);
+      // Sign transaction with Petra wallet
+      const tx = await aptosTransactions.createJob(jobId, jobForm.title, jobForm.company);
+
+      dismissToast(toastId);
+      showTransactionToast({
+        type: 'success',
+        message: 'Job posted on-chain!',
+        txHash: tx.hash
+      });
 
       const newJob: Job = {
         id: jobId,
@@ -88,6 +102,7 @@ export function AlumniDashboard() {
         applications: [],
         shortlisted: [],
         referred: [],
+        txHash: tx.hash,
       };
 
       storage.saveJob(newJob);
@@ -101,54 +116,106 @@ export function AlumniDashboard() {
         description: '',
         requirements: '',
       });
-      toast.success('Job posted successfully!');
-    } catch (error) {
-      console.error('Error creating job:', error);
-      toast.error('Failed to create job');
+    } catch (error: any) {
+      dismissToast(toastId);
+      showTransactionToast({
+        type: 'error',
+        message: error.message || 'Transaction failed'
+      });
     } finally {
       setIsCreating(false);
     }
   };
 
-  const handleShortlist = (jobId: string, studentAddress: string) => {
-    const job = storage.getJob(jobId);
-    if (job) {
-      if (!job.shortlisted.includes(studentAddress)) {
-        job.shortlisted.push(studentAddress);
-        storage.saveJob(job);
+  const handleShortlist = async (jobId: string, studentAddress: string) => {
+    setProcessingAction({ jobId, studentAddress, action: 'shortlist' });
+    
+    const toastId = showTransactionToast({
+      type: 'pending',
+      message: 'Waiting for wallet signature to shortlist candidate...'
+    });
 
-        const application = storage.getApplications().find(
-          (a) => a.jobId === jobId && a.studentAddress === studentAddress
-        );
-        if (application) {
-          application.status = 'shortlisted';
-          storage.saveApplication(application);
+    try {
+      const tx = await aptosTransactions.shortlistCandidate(jobId, studentAddress);
+
+      dismissToast(toastId);
+      showTransactionToast({
+        type: 'success',
+        message: 'Candidate shortlisted on-chain!',
+        txHash: tx.hash
+      });
+
+      const job = storage.getJob(jobId);
+      if (job) {
+        if (!job.shortlisted.includes(studentAddress)) {
+          job.shortlisted.push(studentAddress);
+          storage.saveJob(job);
+
+          const application = storage.getApplications().find(
+            (a) => a.jobId === jobId && a.studentAddress === studentAddress
+          );
+          if (application) {
+            application.status = 'shortlisted';
+            storage.saveApplication(application);
+          }
+          loadData();
+          setSelectedJob(storage.getJob(jobId));
         }
-        loadData();
-        setSelectedJob(storage.getJob(jobId));
-        toast.success('Candidate shortlisted!');
       }
+    } catch (error: any) {
+      dismissToast(toastId);
+      showTransactionToast({
+        type: 'error',
+        message: error.message || 'Transaction failed'
+      });
+    } finally {
+      setProcessingAction(null);
     }
   };
 
-  const handleRefer = (jobId: string, studentAddress: string) => {
-    const job = storage.getJob(jobId);
-    if (job) {
-      if (!job.referred.includes(studentAddress)) {
-        job.referred.push(studentAddress);
-        storage.saveJob(job);
+  const handleRefer = async (jobId: string, studentAddress: string) => {
+    setProcessingAction({ jobId, studentAddress, action: 'refer' });
+    
+    const toastId = showTransactionToast({
+      type: 'pending',
+      message: 'Waiting for wallet signature to provide referral...'
+    });
 
-        const application = storage.getApplications().find(
-          (a) => a.jobId === jobId && a.studentAddress === studentAddress
-        );
-        if (application) {
-          application.status = 'referred';
-          storage.saveApplication(application);
+    try {
+      const tx = await aptosTransactions.referCandidate(jobId, studentAddress);
+
+      dismissToast(toastId);
+      showTransactionToast({
+        type: 'success',
+        message: 'Referral provided on-chain!',
+        txHash: tx.hash
+      });
+
+      const job = storage.getJob(jobId);
+      if (job) {
+        if (!job.referred.includes(studentAddress)) {
+          job.referred.push(studentAddress);
+          storage.saveJob(job);
+
+          const application = storage.getApplications().find(
+            (a) => a.jobId === jobId && a.studentAddress === studentAddress
+          );
+          if (application) {
+            application.status = 'referred';
+            storage.saveApplication(application);
+          }
+          loadData();
+          setSelectedJob(storage.getJob(jobId));
         }
-        loadData();
-        setSelectedJob(storage.getJob(jobId));
-        toast.success('Referral provided!');
       }
+    } catch (error: any) {
+      dismissToast(toastId);
+      showTransactionToast({
+        type: 'error',
+        message: error.message || 'Transaction failed'
+      });
+    } finally {
+      setProcessingAction(null);
     }
   };
 
@@ -160,6 +227,12 @@ export function AlumniDashboard() {
         return student ? { ...app, student } : null;
       })
       .filter(Boolean) as (Application & { student: Student })[];
+  };
+
+  const isProcessingThis = (jobId: string, studentAddress: string, action: string) => {
+    return processingAction?.jobId === jobId && 
+           processingAction?.studentAddress === studentAddress && 
+           processingAction?.action === action;
   };
 
   return (
@@ -176,7 +249,7 @@ export function AlumniDashboard() {
               Alumni Dashboard
             </h1>
             <p className="text-muted-foreground">
-              Create jobs and provide referrals to verified students
+              Create jobs and provide signed referrals to verified students
             </p>
           </div>
         </div>
@@ -283,13 +356,26 @@ export function AlumniDashboard() {
                       {job.location}
                     </span>
                   </div>
-                  <div className="flex items-center gap-4 text-xs">
-                    <span className="text-muted-foreground">
-                      {job.applications.length} applications
-                    </span>
-                    <span className="text-success">
-                      {job.referred.length} referred
-                    </span>
+                  <div className="flex items-center justify-between">
+                    <div className="flex items-center gap-4 text-xs">
+                      <span className="text-muted-foreground">
+                        {job.applications.length} applications
+                      </span>
+                      <span className="text-success">
+                        {job.referred.length} referred
+                      </span>
+                    </div>
+                    {job.txHash && (
+                      <a
+                        href={getExplorerUrl(job.txHash)}
+                        target="_blank"
+                        rel="noopener noreferrer"
+                        onClick={(e) => e.stopPropagation()}
+                        className="text-xs text-primary hover:underline flex items-center gap-1"
+                      >
+                        <ExternalLink className="w-3 h-3" />
+                      </a>
+                    )}
                   </div>
                 </motion.button>
               ))
@@ -311,7 +397,7 @@ export function AlumniDashboard() {
                       No applications yet
                     </div>
                   ) : (
-                    getJobApplications(selectedJob.id).map(({ student, status }) => (
+                    getJobApplications(selectedJob.id).map(({ student, status, txHash }) => (
                       <div
                         key={student.walletAddress}
                         className="p-4 hover:bg-muted/50 transition-colors"
@@ -325,15 +411,31 @@ export function AlumniDashboard() {
                           </div>
                           <StatusBadge status={status} />
                         </div>
+                        {txHash && (
+                          <a
+                            href={getExplorerUrl(txHash)}
+                            target="_blank"
+                            rel="noopener noreferrer"
+                            className="text-xs text-primary hover:underline flex items-center gap-1 mb-3"
+                          >
+                            Application TX
+                            <ExternalLink className="w-3 h-3" />
+                          </a>
+                        )}
                         <div className="flex gap-2">
                           {status === 'pending' && (
                             <Button
                               size="sm"
                               variant="outline"
                               onClick={() => handleShortlist(selectedJob.id, student.walletAddress)}
+                              disabled={!!processingAction}
                             >
-                              <Star className="w-3.5 h-3.5" />
-                              Shortlist
+                              {isProcessingThis(selectedJob.id, student.walletAddress, 'shortlist') ? (
+                                <Loader2 className="w-3.5 h-3.5 animate-spin" />
+                              ) : (
+                                <Star className="w-3.5 h-3.5" />
+                              )}
+                              Sign & Shortlist
                             </Button>
                           )}
                           {(status === 'pending' || status === 'shortlisted') && (
@@ -341,9 +443,14 @@ export function AlumniDashboard() {
                               size="sm"
                               variant="success"
                               onClick={() => handleRefer(selectedJob.id, student.walletAddress)}
+                              disabled={!!processingAction}
                             >
-                              <Send className="w-3.5 h-3.5" />
-                              Refer
+                              {isProcessingThis(selectedJob.id, student.walletAddress, 'refer') ? (
+                                <Loader2 className="w-3.5 h-3.5 animate-spin" />
+                              ) : (
+                                <Send className="w-3.5 h-3.5" />
+                              )}
+                              Sign & Refer
                             </Button>
                           )}
                         </div>
@@ -437,11 +544,22 @@ export function AlumniDashboard() {
                   </div>
                 </div>
 
-                <div className="pt-4">
-                  <p className="text-xs text-muted-foreground mb-2">Resume Verified On-Chain</p>
+                <div className="pt-4 space-y-2">
+                  <p className="text-xs text-muted-foreground">Resume Verified On-Chain</p>
                   <code className="text-xs font-mono text-foreground bg-muted/50 p-2 rounded block break-all">
                     {selectedStudent.resumeHash?.slice(0, 40)}...
                   </code>
+                  {selectedStudent.verificationTxHash && (
+                    <a
+                      href={getExplorerUrl(selectedStudent.verificationTxHash)}
+                      target="_blank"
+                      rel="noopener noreferrer"
+                      className="inline-flex items-center gap-1 text-xs text-primary hover:underline"
+                    >
+                      View verification TX
+                      <ExternalLink className="w-3 h-3" />
+                    </a>
+                  )}
                 </div>
               </div>
             ) : (
@@ -549,6 +667,12 @@ export function AlumniDashboard() {
                   />
                 </div>
 
+                <div className="p-3 rounded-lg bg-primary/5 border border-primary/20">
+                  <p className="text-xs text-muted-foreground">
+                    <strong className="text-foreground">Signed Job Posting:</strong> Your job will be recorded on Aptos Devnet with your wallet signature.
+                  </p>
+                </div>
+
                 <Button
                   variant="alumni"
                   className="w-full"
@@ -558,12 +682,12 @@ export function AlumniDashboard() {
                   {isCreating ? (
                     <>
                       <Loader2 className="w-4 h-4 animate-spin" />
-                      Creating...
+                      Awaiting Signature...
                     </>
                   ) : (
                     <>
                       <Plus className="w-4 h-4" />
-                      Create Job
+                      Sign & Create Job
                     </>
                   )}
                 </Button>
