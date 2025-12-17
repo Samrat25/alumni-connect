@@ -4,7 +4,8 @@
 const PINATA_API_KEY = 'fb532782dafafa6706dd';
 const PINATA_SECRET_KEY = '5730bca57ae150f6a6d1ad3864693a9cdc15b1f77c9cdacd9aa8e54fc14d7941';
 const PINATA_API_URL = 'https://api.pinata.cloud';
-const PINATA_GATEWAY = 'https://aqua-imperial-narwhal-462.mypinata.cloud/ipfs';
+// Using public gateway - dedicated gateway has access restrictions
+const PINATA_GATEWAY = 'https://gateway.pinata.cloud/ipfs';
 
 // Test function - run testPinataConnection() in browser console to verify
 export const testPinataConnection = async () => {

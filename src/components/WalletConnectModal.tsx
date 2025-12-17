@@ -1,7 +1,7 @@
 import { useEffect, useState } from 'react';
+import { createPortal } from 'react-dom';
 import { motion, AnimatePresence } from 'framer-motion';
 import { X, Wallet, ExternalLink, AlertCircle, CheckCircle2, Loader2 } from 'lucide-react';
-import { Button } from '@/components/ui/button';
 
 interface WalletConnectModalProps {
   isOpen: boolean;
@@ -51,7 +51,8 @@ export function WalletConnectModal({ isOpen, onClose, onConnect }: WalletConnect
     }
   };
 
-  return (
+  // Use portal to render modal at document body level
+  const modalContent = (
     <AnimatePresence>
       {isOpen && (
         <>
@@ -61,16 +62,21 @@ export function WalletConnectModal({ isOpen, onClose, onConnect }: WalletConnect
             animate={{ opacity: 1 }}
             exit={{ opacity: 0 }}
             onClick={onClose}
-            className="fixed inset-0 bg-black/60 backdrop-blur-sm z-50"
+            className="fixed inset-0 bg-black/70 backdrop-blur-sm"
+            style={{ zIndex: 99999 }}
           />
 
           {/* Modal */}
-          <div className="fixed inset-0 flex items-center justify-center z-50 p-4">
+          <div 
+            className="fixed inset-0 flex items-center justify-center p-4 overflow-y-auto"
+            style={{ zIndex: 99999 }}
+          >
             <motion.div
               initial={{ opacity: 0, scale: 0.95, y: 20 }}
               animate={{ opacity: 1, scale: 1, y: 0 }}
               exit={{ opacity: 0, scale: 0.95, y: 20 }}
-              className="bg-card border border-border rounded-2xl shadow-2xl max-w-md w-full overflow-hidden"
+              onClick={(e) => e.stopPropagation()}
+              className="bg-card border border-border rounded-2xl shadow-2xl max-w-md w-full my-auto"
             >
               {/* Header */}
               <div className="relative bg-gradient-to-br from-primary/10 via-secondary/10 to-accent/10 p-6 border-b border-border">
@@ -190,4 +196,7 @@ export function WalletConnectModal({ isOpen, onClose, onConnect }: WalletConnect
       )}
     </AnimatePresence>
   );
+
+  // Render using portal to ensure it's at the top of the DOM
+  return createPortal(modalContent, document.body);
 }

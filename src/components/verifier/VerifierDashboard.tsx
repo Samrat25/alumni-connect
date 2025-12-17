@@ -241,7 +241,7 @@ export function VerifierDashboard() {
                   </div>
                   {selectedStudent.ipfsCid && (
                     <a
-                      href={selectedStudent.ipfsUrl || `https://aqua-imperial-narwhal-462.mypinata.cloud/ipfs/${selectedStudent.ipfsCid}`}
+                      href={selectedStudent.ipfsUrl || `https://gateway.pinata.cloud/ipfs/${selectedStudent.ipfsCid}`}
                       target="_blank"
                       rel="noopener noreferrer"
                       className="px-3 py-1.5 bg-primary text-primary-foreground rounded-lg text-xs font-medium hover:bg-primary/90 transition-colors flex items-center gap-1"

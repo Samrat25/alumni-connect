@@ -1,7 +1,13 @@
 import { motion } from 'framer-motion';
 import { useWallet } from '@/contexts/WalletContext';
 import { UserRole } from '@/lib/types';
-import { GraduationCap, ShieldCheck, Briefcase, ChevronRight } from 'lucide-react';
+import { storage } from '@/lib/storage';
+import {
+  GraduationCap,
+  ShieldCheck,
+  Briefcase,
+  ChevronRight,
+} from 'lucide-react';
 import { cn } from '@/lib/utils';
 
 const roles = [
@@ -34,11 +40,106 @@ const roles = [
 export function RoleSelector() {
   const { setRole, isVerifier, address } = useWallet();
 
+  // Check if this wallet is already registered as a student
+  const isRegisteredStudent = address ? !!storage.getStudent(address) : false;
+
+  // Check if this wallet has posted jobs (is alumni)
+  const isRegisteredAlumni = address
+    ? storage.getJobs().some((job) => job.postedBy === address)
+    : false;
+
+  const getRoleStatus = (roleId: UserRole) => {
+    if (!address) return { disabled: false, message: null };
+
+    // Verifier role restrictions
+    if (roleId === 'verifier') {
+      if (!isVerifier) {
+        return {
+          disabled: true,
+          message: '⚠️ Your wallet is not authorized as a verifier',
+          type: 'error',
+        };
+      }
+      if (isRegisteredStudent) {
+        return {
+          disabled: true,
+          message: '⚠️ This wallet is registered as a student',
+          type: 'error',
+        };
+      }
+      if (isRegisteredAlumni) {
+        return {
+          disabled: true,
+          message: '⚠️ This wallet is registered as alumni',
+          type: 'error',
+        };
+      }
+      return {
+        disabled: false,
+        message: '✓ Authorized verifier wallet',
+        type: 'success',
+      };
+    }
+
+    // Student role restrictions
+    if (roleId === 'student') {
+      if (isVerifier) {
+        return {
+          disabled: true,
+          message: '⚠️ Verifier wallets cannot register as students',
+          type: 'error',
+        };
+      }
+      if (isRegisteredAlumni) {
+        return {
+          disabled: true,
+          message: '⚠️ This wallet is already registered as alumni',
+          type: 'error',
+        };
+      }
+      if (isRegisteredStudent) {
+        return {
+          disabled: false,
+          message: '✓ Continue as registered student',
+          type: 'success',
+        };
+      }
+      return { disabled: false, message: null };
+    }
+
+    // Alumni role restrictions
+    if (roleId === 'alumni') {
+      if (isVerifier) {
+        return {
+          disabled: true,
+          message: '⚠️ Verifier wallets cannot register as alumni',
+          type: 'error',
+        };
+      }
+      if (isRegisteredStudent) {
+        return {
+          disabled: true,
+          message: '⚠️ This wallet is already registered as a student',
+          type: 'error',
+        };
+      }
+      if (isRegisteredAlumni) {
+        return {
+          disabled: false,
+          message: '✓ Continue as alumni',
+          type: 'success',
+        };
+      }
+      return { disabled: false, message: null };
+    }
+
+    return { disabled: false, message: null };
+  };
+
   const handleRoleSelect = (roleId: UserRole) => {
-    if (roleId === 'verifier' && !isVerifier) {
-      // In production, this would check against the actual verifier address
-      // For prototype, we'll allow it but show a warning
-      console.warn('This wallet is not the designated verifier');
+    const status = getRoleStatus(roleId);
+    if (status.disabled) {
+      return;
     }
     setRole(roleId);
   };
@@ -56,13 +157,18 @@ export function RoleSelector() {
         <p className="text-muted-foreground">
           Choose how you want to interact with the platform
         </p>
+        {address && (
+          <p className="text-xs text-muted-foreground mt-2">
+            Connected: {address.slice(0, 6)}...{address.slice(-4)}
+          </p>
+        )}
       </motion.div>
 
       <div className="grid md:grid-cols-3 gap-6">
         {roles.map((role, index) => {
           const Icon = role.icon;
-          const isDisabled = role.id === 'verifier' && !isVerifier && address;
-          
+          const status = getRoleStatus(role.id);
+
           return (
             <motion.button
               key={role.id}
@@ -70,12 +176,12 @@ export function RoleSelector() {
               animate={{ opacity: 1, y: 0 }}
               transition={{ delay: index * 0.1 }}
               onClick={() => handleRoleSelect(role.id)}
-              disabled={!!isDisabled}
+              disabled={status.disabled}
               className={cn(
                 'group relative p-6 rounded-2xl bg-card border-2 border-border/50',
                 'hover:border-transparent hover:shadow-xl transition-all duration-300',
                 'text-left overflow-hidden',
-                isDisabled && 'opacity-50 cursor-not-allowed'
+                status.disabled && 'opacity-50 cursor-not-allowed'
               )}
             >
               {/* Gradient background on hover */}
@@ -107,21 +213,37 @@ export function RoleSelector() {
                 {role.description}
               </p>
 
-              {/* Warning for verifier */}
-              {role.id === 'verifier' && !isVerifier && address && (
-                <p className="text-xs text-destructive mt-3">
-                  ⚠️ Your wallet is not authorized as a verifier
-                </p>
-              )}
-              {role.id === 'verifier' && isVerifier && address && (
-                <p className="text-xs text-success mt-3">
-                  ✓ Authorized verifier wallet
+              {/* Status message */}
+              {status.message && (
+                <p
+                  className={cn(
+                    'text-xs mt-3',
+                    status.type === 'error' && 'text-destructive',
+                    status.type === 'success' && 'text-success'
+                  )}
+                >
+                  {status.message}
                 </p>
               )}
             </motion.button>
           );
         })}
       </div>
+
+      {/* Role separation info */}
+      <motion.div
+        initial={{ opacity: 0 }}
+        animate={{ opacity: 1 }}
+        transition={{ delay: 0.4 }}
+        className="mt-8 p-4 rounded-xl bg-muted/50 border border-border/50"
+      >
+        <p className="text-xs text-muted-foreground text-center">
+          <strong className="text-foreground">Role Separation:</strong> Each
+          wallet can only be used for ONE role. Students cannot be Alumni or
+          Verifiers. Alumni cannot be Students or Verifiers. Use different
+          wallets for different roles.
+        </p>
+      </motion.div>
     </div>
   );
 }
