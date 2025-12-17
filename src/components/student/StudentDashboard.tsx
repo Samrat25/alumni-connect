@@ -26,7 +26,7 @@ import {
 import { cn } from '@/lib/utils';
 
 export function StudentDashboard() {
-  const { address, setRole } = useWallet();
+  const { address, setRole, signAndSubmitTransaction } = useWallet();
   const [student, setStudent] = useState<Student | null>(null);
   const [jobs, setJobs] = useState<Job[]>([]);
   const [activeTab, setActiveTab] = useState<'profile' | 'jobs'>('profile');
@@ -82,8 +82,13 @@ export function StudentDashboard() {
       // Generate hash from file
       const hash = await storage.generateHash(resumeFile);
 
-      // Sign transaction with Petra wallet
-      const tx = await aptosTransactions.submitResume(hash, formData.name);
+      // Sign transaction with Petra wallet - this will trigger Petra's popup
+      const tx = await aptosTransactions.submitResume(
+        hash,
+        formData.name,
+        signAndSubmitTransaction,
+        address
+      );
 
       dismissToast(toastId);
       showTransactionToast({
@@ -131,8 +136,13 @@ export function StudentDashboard() {
     });
 
     try {
-      // Sign transaction with Petra wallet
-      const tx = await aptosTransactions.applyToJob(jobId, student.resumeHash || '');
+      // Sign transaction with Petra wallet - this will trigger Petra's popup
+      const tx = await aptosTransactions.applyToJob(
+        jobId,
+        student.resumeHash || '',
+        signAndSubmitTransaction,
+        address
+      );
 
       dismissToast(toastId);
       showTransactionToast({

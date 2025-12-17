@@ -1,4 +1,6 @@
 import { useWallet, WalletProvider } from '@/contexts/WalletContext';
+import { AptosWalletAdapterProvider } from '@aptos-labs/wallet-adapter-react';
+import { PetraWallet } from 'petra-plugin-wallet-adapter';
 import { LandingHero } from '@/components/LandingHero';
 import { StudentDashboard } from '@/components/student/StudentDashboard';
 import { VerifierDashboard } from '@/components/verifier/VerifierDashboard';
@@ -7,6 +9,9 @@ import { WalletButton } from '@/components/WalletButton';
 import { GraduationCap, ArrowLeft } from 'lucide-react';
 import { Button } from '@/components/ui/button';
 import { Toaster } from 'sonner';
+import { Network } from '@aptos-labs/ts-sdk';
+
+const wallets = [new PetraWallet()];
 
 function DashboardLayout({ children }: { children: React.ReactNode }) {
   const { setRole } = useWallet();
@@ -59,20 +64,33 @@ function AppContent() {
 }
 
 const Index = () => {
+  console.log('Index component rendering...');
+  
   return (
-    <WalletProvider>
-      <Toaster 
-        position="top-right"
-        toastOptions={{
-          style: {
-            background: 'hsl(var(--card))',
-            border: '1px solid hsl(var(--border))',
-            color: 'hsl(var(--foreground))',
-          },
-        }}
-      />
-      <AppContent />
-    </WalletProvider>
+    <AptosWalletAdapterProvider
+      plugins={wallets}
+      autoConnect={false}
+      dappConfig={{
+        network: Network.DEVNET,
+      }}
+      onError={(error) => {
+        console.error('Wallet adapter error:', error);
+      }}
+    >
+      <WalletProvider>
+        <Toaster 
+          position="top-right"
+          toastOptions={{
+            style: {
+              background: 'hsl(var(--card))',
+              border: '1px solid hsl(var(--border))',
+              color: 'hsl(var(--foreground))',
+            },
+          }}
+        />
+        <AppContent />
+      </WalletProvider>
+    </AptosWalletAdapterProvider>
   );
 };
 

@@ -1,13 +1,17 @@
+import { useState } from 'react';
 import { useWallet } from '@/contexts/WalletContext';
 import { Button } from '@/components/ui/button';
 import { Wallet, LogOut, Loader2, Globe, ExternalLink } from 'lucide-react';
 import { motion } from 'framer-motion';
 import { cn } from '@/lib/utils';
+import { WalletConnectModal } from './WalletConnectModal';
 
 export function WalletButton() {
   const { connected, address, connecting, connect, disconnect, network } = useWallet();
+  const [showModal, setShowModal] = useState(false);
 
-  const truncateAddress = (addr: string) => {
+  const truncateAddress = (addr: string | null) => {
+    if (!addr || typeof addr !== 'string') return 'Invalid Address';
     return `${addr.slice(0, 6)}...${addr.slice(-4)}`;
   };
 
@@ -56,18 +60,26 @@ export function WalletButton() {
   }
 
   return (
-    <Button
-      variant="gradient"
-      onClick={connect}
-      disabled={connecting}
-      className="gap-2"
-    >
-      {connecting ? (
-        <Loader2 className="w-4 h-4 animate-spin" />
-      ) : (
-        <Wallet className="w-4 h-4" />
-      )}
-      {connecting ? 'Connecting...' : 'Connect Petra Wallet'}
-    </Button>
+    <>
+      <Button
+        variant="gradient"
+        onClick={() => setShowModal(true)}
+        disabled={connecting}
+        className="gap-2"
+      >
+        {connecting ? (
+          <Loader2 className="w-4 h-4 animate-spin" />
+        ) : (
+          <Wallet className="w-4 h-4" />
+        )}
+        {connecting ? 'Connecting...' : 'Connect Petra Wallet'}
+      </Button>
+
+      <WalletConnectModal
+        isOpen={showModal}
+        onClose={() => setShowModal(false)}
+        onConnect={connect}
+      />
+    </>
   );
 }

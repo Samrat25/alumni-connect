@@ -31,7 +31,7 @@ import {
 import { cn } from '@/lib/utils';
 
 export function AlumniDashboard() {
-  const { address, setRole } = useWallet();
+  const { address, setRole, signAndSubmitTransaction } = useWallet();
   const [jobs, setJobs] = useState<Job[]>([]);
   const [verifiedStudents, setVerifiedStudents] = useState<Student[]>([]);
   const [activeTab, setActiveTab] = useState<'jobs' | 'candidates'>('jobs');
@@ -78,8 +78,14 @@ export function AlumniDashboard() {
     try {
       const jobId = `job_${Date.now()}_${Math.random().toString(36).slice(2, 8)}`;
 
-      // Sign transaction with Petra wallet
-      const tx = await aptosTransactions.createJob(jobId, jobForm.title, jobForm.company);
+      // Sign transaction with Petra wallet - this will trigger Petra's popup
+      const tx = await aptosTransactions.createJob(
+        jobId,
+        jobForm.title,
+        jobForm.company,
+        signAndSubmitTransaction,
+        address
+      );
 
       dismissToast(toastId);
       showTransactionToast({
@@ -136,7 +142,13 @@ export function AlumniDashboard() {
     });
 
     try {
-      const tx = await aptosTransactions.shortlistCandidate(jobId, studentAddress);
+      // Sign transaction with Petra wallet - this will trigger Petra's popup
+      const tx = await aptosTransactions.shortlistCandidate(
+        jobId,
+        studentAddress,
+        signAndSubmitTransaction,
+        address!
+      );
 
       dismissToast(toastId);
       showTransactionToast({
@@ -182,7 +194,13 @@ export function AlumniDashboard() {
     });
 
     try {
-      const tx = await aptosTransactions.referCandidate(jobId, studentAddress);
+      // Sign transaction with Petra wallet - this will trigger Petra's popup
+      const tx = await aptosTransactions.referCandidate(
+        jobId,
+        studentAddress,
+        signAndSubmitTransaction,
+        address!
+      );
 
       dismissToast(toastId);
       showTransactionToast({

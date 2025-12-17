@@ -1,7 +1,7 @@
-import React, { createContext, useContext, useState, useCallback, useEffect } from 'react';
+import React, { createContext, useContext, useState, useCallback } from 'react';
+import { useWallet as useAptosWallet } from '@aptos-labs/wallet-adapter-react';
 import { UserRole } from '@/lib/types';
 import { storage } from '@/lib/storage';
-import { getPetra, isPetraInstalled } from '@/lib/aptos';
 
 interface WalletContextType {
   connected: boolean;
@@ -10,144 +10,102 @@ interface WalletContextType {
   connecting: boolean;
   network: string | null;
   connect: () => Promise<void>;
-  disconnect: () => void;
+  disconnect: () => Promise<void>;
   setRole: (role: UserRole) => void;
   isVerifier: boolean;
+  signAndSubmitTransaction: (transaction: any) => Promise<any>;
 }
 
 const WalletContext = createContext<WalletContextType | undefined>(undefined);
 
 export function WalletProvider({ children }: { children: React.ReactNode }) {
-  const [connected, setConnected] = useState(false);
-  const [address, setAddress] = useState<string | null>(null);
+  const {
+    connect: aptosConnect,
+    disconnect: aptosDisconnect,
+    account,
+    connected: aptosConnected,
+    signAndSubmitTransaction: aptosSignAndSubmit,
+    wallets,
+  } = useAptosWallet();
+
   const [role, setRoleState] = useState<UserRole>(null);
-  const [connecting, setConnecting] = useState(false);
-  const [network, setNetwork] = useState<string | null>(null);
+  const [network] = useState<string | null>('Devnet');
+  const [isConnecting, setIsConnecting] = useState(false);
+
+  // Get address directly from account
+  const address = account?.address?.toString() || null;
+  
+  const connected = aptosConnected;
+  const connecting = isConnecting;
 
   const verifierAddress = storage.getVerifierAddress();
-  const isVerifier = address?.toLowerCase() === verifierAddress.toLowerCase();
+  const isVerifier = address && verifierAddress 
+    ? address.toLowerCase() === verifierAddress.toLowerCase() 
+    : false;
 
-  // Connect to Petra wallet
+  // Connect to wallet - this will trigger Petra's popup
   const connect = useCallback(async () => {
-    if (!isPetraInstalled()) {
-      window.open('https://petra.app/', '_blank');
-      return;
-    }
-
-    setConnecting(true);
+    setIsConnecting(true);
     try {
-      const petra = getPetra();
-      
-      // Connect to wallet
-      const response = await petra.connect();
-      
-      if (response.address) {
-        setAddress(response.address);
-        setConnected(true);
-        
-        // Check and switch to devnet
-        const currentNetwork = await petra.network();
-        setNetwork(currentNetwork);
-        
-        if (currentNetwork !== 'Devnet') {
-          try {
-            await petra.changeNetwork({ networkName: 'Devnet' });
-            setNetwork('Devnet');
-          } catch (e) {
-            console.warn('Please switch to Devnet manually in Petra');
-          }
-        }
+      const petraWallet = wallets.find(w => w.name === 'Petra');
+      if (!petraWallet) {
+        throw new Error('Petra Wallet not found. Please install Petra extension and refresh the page.');
       }
+      
+      await aptosConnect(petraWallet.name);
     } catch (error: any) {
       console.error('Failed to connect wallet:', error);
+      throw new Error(error.message || 'User rejected the connection request');
     } finally {
-      setConnecting(false);
+      setIsConnecting(false);
     }
-  }, []);
+  }, [aptosConnect, wallets]);
 
   // Disconnect wallet
   const disconnect = useCallback(async () => {
-    const petra = getPetra();
-    if (petra) {
-      try {
-        await petra.disconnect();
-      } catch (e) {
-        console.error('Error disconnecting:', e);
-      }
+    try {
+      await aptosDisconnect();
+      setRoleState(null);
+    } catch (error) {
+      console.error('Error disconnecting:', error);
     }
-    setConnected(false);
-    setAddress(null);
-    setRoleState(null);
-    setNetwork(null);
-  }, []);
+  }, [aptosDisconnect]);
 
   // Set user role
   const setRole = useCallback((newRole: UserRole) => {
     setRoleState(newRole);
   }, []);
 
-  // Check connection and listen for account changes
-  useEffect(() => {
-    const checkConnection = async () => {
-      if (isPetraInstalled()) {
-        try {
-          const petra = getPetra();
-          const isConnected = await petra.isConnected();
-          
-          if (isConnected) {
-            const account = await petra.account();
-            if (account?.address) {
-              setAddress(account.address);
-              setConnected(true);
-              
-              const currentNetwork = await petra.network();
-              setNetwork(currentNetwork);
-            }
-          }
-        } catch (error) {
-          console.error('Error checking wallet connection:', error);
-        }
-      }
-    };
-
-    checkConnection();
-
-    // Listen for account changes
-    if (isPetraInstalled()) {
-      const petra = getPetra();
+  // Sign and submit transaction using wallet adapter
+  const signAndSubmitTransaction = useCallback(
+    async (payload: any) => {
+      console.log('signAndSubmitTransaction called');
       
-      const handleAccountChange = async () => {
-        try {
-          const account = await petra.account();
-          if (account?.address) {
-            setAddress(account.address);
-          } else {
-            setConnected(false);
-            setAddress(null);
-            setRoleState(null);
-          }
-        } catch (e) {
-          setConnected(false);
-          setAddress(null);
+      if (!connected) {
+        throw new Error('Wallet not connected');
+      }
+      
+      if (!aptosSignAndSubmit) {
+        throw new Error('Wallet not ready');
+      }
+      
+      // Wrap payload in the format wallet adapter expects
+      const txPayload = {
+        data: {
+          function: payload.function,
+          typeArguments: payload.type_arguments || [],
+          functionArguments: payload.arguments || [],
         }
       };
-
-      const handleNetworkChange = async (network: string) => {
-        setNetwork(network);
-      };
-
-      const handleDisconnect = () => {
-        setConnected(false);
-        setAddress(null);
-        setRoleState(null);
-        setNetwork(null);
-      };
-
-      petra.onAccountChange(handleAccountChange);
-      petra.onNetworkChange(handleNetworkChange);
-      petra.onDisconnect(handleDisconnect);
-    }
-  }, []);
+      
+      console.log('Submitting with payload:', txPayload);
+      
+      const response = await aptosSignAndSubmit(txPayload);
+      console.log('Transaction response:', response);
+      return response;
+    },
+    [connected, aptosSignAndSubmit]
+  );
 
   return (
     <WalletContext.Provider
@@ -161,6 +119,7 @@ export function WalletProvider({ children }: { children: React.ReactNode }) {
         disconnect,
         setRole,
         isVerifier,
+        signAndSubmitTransaction,
       }}
     >
       {children}

@@ -4,19 +4,6 @@ import { Aptos, AptosConfig, Network } from '@aptos-labs/ts-sdk';
 const config = new AptosConfig({ network: Network.DEVNET });
 export const aptos = new Aptos(config);
 
-// Helper to get Petra wallet
-export const getPetra = () => {
-  if (typeof window !== 'undefined' && 'aptos' in window) {
-    return (window as any).aptos;
-  }
-  return null;
-};
-
-// Check if Petra is installed
-export const isPetraInstalled = () => {
-  return getPetra() !== null;
-};
-
 // Transaction types for our app
 export type TransactionType = 
   | 'submit_resume' 
@@ -51,62 +38,47 @@ export const getTransactions = (): SignedTransaction[] => {
   return data ? JSON.parse(data) : [];
 };
 
-// Create a payload for storing data on-chain
-// Using Aptos coin transfer as a signed transaction mechanism for the prototype
-// In production, you'd use a custom Move module
+// Create a real signed transaction with Petra wallet
+// This will trigger Petra's popup and submit to Aptos Devnet
 export const createSignedTransaction = async (
   type: TransactionType,
-  data: Record<string, any>
+  data: Record<string, any>,
+  signAndSubmitTransaction: (transaction: any) => Promise<any>,
+  senderAddress: string
 ): Promise<SignedTransaction> => {
-  const petra = getPetra();
-  if (!petra) {
-    throw new Error('Petra wallet not found');
-  }
-
-  // Ensure we're on devnet
-  const network = await petra.network();
-  if (network !== 'Devnet') {
-    try {
-      await petra.changeNetwork({ networkName: 'Devnet' });
-    } catch (e) {
-      console.warn('Could not auto-switch network. Please switch to Devnet manually.');
-    }
-  }
-
-  // Create a transaction payload
-  // For the prototype, we'll create a 0-value coin transfer to ourselves
-  // with the data encoded in the transaction
-  // In production, use a custom Move module with entry functions
-  
-  const account = await petra.account();
-  
-  // Create payload with memo-like data in function arguments
-  // This creates a verifiable on-chain record
-  const payload = {
-    type: 'entry_function_payload',
-    function: '0x1::aptos_account::transfer',
-    type_arguments: [],
-    arguments: [
-      account.address, // Transfer to self (0 APT just for signing)
-      '0' // 0 APT transfer - just creating a signed record
-    ]
-  };
-
   try {
-    // Sign and submit the transaction
-    const pendingTx = await petra.signAndSubmitTransaction(payload);
+    console.log('Creating transaction for:', type, 'from:', senderAddress);
+
+    // Simple transaction payload that Petra can handle
+    const payload = {
+      function: "0x1::coin::transfer",
+      type_arguments: ["0x1::aptos_coin::AptosCoin"],
+      arguments: [senderAddress, "1"], // Transfer 1 octa to self
+    };
+
+    console.log('Transaction payload:', payload);
+
+    // Sign and submit - this triggers Petra's popup
+    const pendingTxn = await signAndSubmitTransaction(payload);
     
-    // Wait for confirmation
-    const txResult = await aptos.waitForTransaction({
-      transactionHash: pendingTx.hash
+    console.log('Pending transaction:', pendingTxn);
+
+    // Extract hash from response
+    const txHash = pendingTxn.hash || pendingTxn;
+
+    // Wait for the transaction to be confirmed
+    const executedTransaction = await aptos.waitForTransaction({
+      transactionHash: txHash,
     });
 
+    console.log('Executed transaction:', executedTransaction);
+
     const signedTx: SignedTransaction = {
-      hash: pendingTx.hash,
+      hash: txHash,
       type,
       timestamp: new Date().toISOString(),
-      sender: account.address,
-      success: txResult.success,
+      sender: senderAddress,
+      success: executedTransaction.success,
       payload: data
     };
 
@@ -114,77 +86,149 @@ export const createSignedTransaction = async (
     
     return signedTx;
   } catch (error: any) {
-    // If user rejected or error occurred
+    console.error('Transaction error:', error);
     throw new Error(error.message || 'Transaction failed');
   }
 };
 
 // Specific transaction functions
+// These need to be called with the signAndSubmitTransaction function from wallet context
 export const aptosTransactions = {
   // Student submits resume hash
-  submitResume: async (resumeHash: string, studentName: string) => {
-    return createSignedTransaction('submit_resume', {
-      resumeHash,
-      studentName,
-      action: 'RESUME_SUBMITTED'
-    });
+  submitResume: async (
+    resumeHash: string,
+    studentName: string,
+    signAndSubmitTransaction: (tx: any) => Promise<any>,
+    senderAddress: string
+  ) => {
+    return createSignedTransaction(
+      'submit_resume',
+      {
+        resumeHash,
+        studentName,
+        action: 'RESUME_SUBMITTED'
+      },
+      signAndSubmitTransaction,
+      senderAddress
+    );
   },
 
   // Verifier approves resume
-  verifyResume: async (studentAddress: string, resumeHash: string) => {
-    return createSignedTransaction('verify_resume', {
-      studentAddress,
-      resumeHash,
-      action: 'RESUME_VERIFIED',
-      status: 'APPROVED'
-    });
+  verifyResume: async (
+    studentAddress: string,
+    resumeHash: string,
+    signAndSubmitTransaction: (tx: any) => Promise<any>,
+    senderAddress: string
+  ) => {
+    return createSignedTransaction(
+      'verify_resume',
+      {
+        studentAddress,
+        resumeHash,
+        action: 'RESUME_VERIFIED',
+        status: 'APPROVED'
+      },
+      signAndSubmitTransaction,
+      senderAddress
+    );
   },
 
   // Verifier rejects resume
-  rejectResume: async (studentAddress: string, resumeHash: string) => {
-    return createSignedTransaction('reject_resume', {
-      studentAddress,
-      resumeHash,
-      action: 'RESUME_REJECTED',
-      status: 'REJECTED'
-    });
+  rejectResume: async (
+    studentAddress: string,
+    resumeHash: string,
+    signAndSubmitTransaction: (tx: any) => Promise<any>,
+    senderAddress: string
+  ) => {
+    return createSignedTransaction(
+      'reject_resume',
+      {
+        studentAddress,
+        resumeHash,
+        action: 'RESUME_REJECTED',
+        status: 'REJECTED'
+      },
+      signAndSubmitTransaction,
+      senderAddress
+    );
   },
 
   // Alumni creates job
-  createJob: async (jobId: string, jobTitle: string, company: string) => {
-    return createSignedTransaction('create_job', {
-      jobId,
-      jobTitle,
-      company,
-      action: 'JOB_CREATED'
-    });
+  createJob: async (
+    jobId: string,
+    jobTitle: string,
+    company: string,
+    signAndSubmitTransaction: (tx: any) => Promise<any>,
+    senderAddress: string
+  ) => {
+    return createSignedTransaction(
+      'create_job',
+      {
+        jobId,
+        jobTitle,
+        company,
+        action: 'JOB_CREATED'
+      },
+      signAndSubmitTransaction,
+      senderAddress
+    );
   },
 
   // Student applies to job
-  applyToJob: async (jobId: string, resumeHash: string) => {
-    return createSignedTransaction('apply_job', {
-      jobId,
-      resumeHash,
-      action: 'JOB_APPLICATION'
-    });
+  applyToJob: async (
+    jobId: string,
+    resumeHash: string,
+    signAndSubmitTransaction: (tx: any) => Promise<any>,
+    senderAddress: string
+  ) => {
+    return createSignedTransaction(
+      'apply_job',
+      {
+        jobId,
+        resumeHash,
+        action: 'JOB_APPLICATION'
+      },
+      signAndSubmitTransaction,
+      senderAddress
+    );
   },
 
   // Alumni shortlists candidate
-  shortlistCandidate: async (jobId: string, studentAddress: string) => {
-    return createSignedTransaction('shortlist_candidate', {
-      jobId,
-      studentAddress,
-      action: 'CANDIDATE_SHORTLISTED'
-    });
+  shortlistCandidate: async (
+    jobId: string,
+    studentAddress: string,
+    signAndSubmitTransaction: (tx: any) => Promise<any>,
+    senderAddress: string
+  ) => {
+    return createSignedTransaction(
+      'shortlist_candidate',
+      {
+        jobId,
+        studentAddress,
+        action: 'CANDIDATE_SHORTLISTED'
+      },
+      signAndSubmitTransaction,
+      senderAddress
+    );
   },
 
   // Alumni refers candidate
-  referCandidate: async (jobId: string, studentAddress: string) => {
-    return createSignedTransaction('refer_candidate', {
-      jobId,
-      studentAddress,
-      action: 'REFERRAL_PROVIDED'
-    });
+  referCandidate: async (
+    jobId: string,
+    studentAddress: string,
+    signAndSubmitTransaction: (tx: any) => Promise<any>,
+    senderAddress: string
+  ) => {
+    return createSignedTransaction(
+      'refer_candidate',
+      {
+        jobId,
+        studentAddress,
+        action: 'REFERRAL_PROVIDED'
+      },
+      signAndSubmitTransaction,
+      senderAddress
+    );
   }
 };
 

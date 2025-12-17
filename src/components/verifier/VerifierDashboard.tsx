@@ -25,7 +25,7 @@ import {
 import { cn } from '@/lib/utils';
 
 export function VerifierDashboard() {
-  const { address, setRole } = useWallet();
+  const { address, setRole, signAndSubmitTransaction } = useWallet();
   const [students, setStudents] = useState<Student[]>([]);
   const [selectedStudent, setSelectedStudent] = useState<Student | null>(null);
   const [isProcessing, setIsProcessing] = useState(false);
@@ -60,10 +60,20 @@ export function VerifierDashboard() {
     });
 
     try {
-      // Sign transaction with Petra wallet
+      // Sign transaction with Petra wallet - this will trigger Petra's popup
       const tx = approved
-        ? await aptosTransactions.verifyResume(selectedStudent.walletAddress, selectedStudent.resumeHash || '')
-        : await aptosTransactions.rejectResume(selectedStudent.walletAddress, selectedStudent.resumeHash || '');
+        ? await aptosTransactions.verifyResume(
+            selectedStudent.walletAddress,
+            selectedStudent.resumeHash || '',
+            signAndSubmitTransaction,
+            address
+          )
+        : await aptosTransactions.rejectResume(
+            selectedStudent.walletAddress,
+            selectedStudent.resumeHash || '',
+            signAndSubmitTransaction,
+            address
+          );
 
       dismissToast(toastId);
       showTransactionToast({
