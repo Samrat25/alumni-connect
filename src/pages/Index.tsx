@@ -1,7 +1,7 @@
 import { useWallet, WalletProvider } from '@/contexts/WalletContext';
 import { AptosWalletAdapterProvider } from '@aptos-labs/wallet-adapter-react';
 import { PetraWallet } from 'petra-plugin-wallet-adapter';
-import { LandingHero } from '@/components/LandingHero';
+import  Home  from '@/pages/home';
 import { StudentDashboard } from '@/components/student/StudentDashboard';
 import { VerifierDashboard } from '@/components/verifier/VerifierDashboard';
 import { AlumniDashboard } from '@/components/alumni/AlumniDashboard';
@@ -51,7 +51,7 @@ function AppContent() {
   const { connected, role } = useWallet();
 
   if (!connected || !role) {
-    return <LandingHero />;
+    return <Home />;
   }
 
   return (
