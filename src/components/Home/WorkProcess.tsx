@@ -41,9 +41,9 @@ const WorkProcess = () => {
             </div>
             <h3 className="font-semibold text-foreground mb-2">{item.title}</h3>
             <p className="text-sm text-muted-foreground">{item.description}</p>
-            {index < 2 && (
+            {/* {index < 2 && (
               <div className="hidden sm:block absolute top-8 right-0 w-8 h-0.5 bg-border" />
-            )}
+            )} */}
           </div>
         ))}
       </div>

@@ -80,6 +80,7 @@
     --gradient-accent: linear-gradient(135deg, oklch(0.5841 0.1031 171.6359) 0%, oklch(0.7668 0.0626 197.2248) 100%);
     --gradient-hero: linear-gradient(135deg, oklch(0.7668 0.0626 197.2248) 0%, oklch(0.5841 0.1031 171.6359) 100%);
     --gradient-glass: linear-gradient(135deg, rgba(255,255,255,0.9) 0%, rgba(255,255,255,0.7) 100%);
+    --gradient-text: linear-gradient(90deg, transparent 0%, oklch(0.5841 0.1031 171.6359) 100%);
 
     /* Shadows */
     --shadow-glow: 0 0 40px oklch(0.7668 0.0626 197.2248 / 0.2);
@@ -90,7 +91,7 @@
 
   .dark {
     --background: oklch(0.1822 0 0);
-    --foreground: oklch(0.8863 0.0150 290.2756);
+    --foreground: oklch(76.993% 0.00009 271.152);
     --card: oklch(0.2046 0 0);
     --card-foreground: oklch(0.8863 0.0150 290.2756);
     --popover: oklch(0.2603 0 0);
@@ -240,6 +241,13 @@
     background-image: var(--gradient-hero);
   }
 
+  .gradient-text2{
+    @apply bg-clip-text text-transparent;
+    -webkit-text-stroke: 1px oklch(60.686% 0.1222 168.011);
+    background-image: var(--gradient-text);
+  }
+
+
   .gradient-primary {
     background-image: var(--gradient-primary);
   }
@@ -271,6 +279,12 @@
   .animate-shimmer {
     animation: shimmer 2s linear infinite;
     background-size: 200% 100%;
+  }
+
+  .backstroke {
+    -webkit-text-stroke: 1px oklch(0.7668 0.0626 197.2248);
+    -webkit-text-fill-color: transparent;
+    paint-order: stroke fill;
   }
 }
 

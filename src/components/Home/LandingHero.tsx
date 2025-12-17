@@ -18,13 +18,13 @@ const LandingHero = () => {
       transition={{ duration: 0.6 }}
       className="mb-16"
     >
-      <div className="inline-flex items-center gap-2 px-4 py-2 rounded-full bg-primary/10 text-primary text-sm font-medium mb-6">
+      <div className="inline-flex items-center gap-2 px-4 py-2 rounded-full bg-[#248f74]/5 text-primary text-sm font-medium mb-6 border">
         <Blocks className="w-4 h-4" />
         Powered by Aptos Blockchain
       </div>
-      <h1 className="text-4xl sm:text-5xl lg:text-6xl font-bold text-foreground mb-6 leading-tight">
-        Trustless Referrals for{" "}
-        <span className="gradient-text">Verified Talent</span>
+      <h1 className="text-4xl sm:text-5xl lg:text-7xl font-bold text-foreground mb-6 leading-tight">
+        <span className="gradient-text2">Trustless</span> Referrals for <br />{" "}
+        <span className="gradient-text2">Verified </span>Talent
       </h1>
       <p className="text-lg text-muted-foreground max-w-2xl mx-auto mb-10">
         A decentralized platform where students get their resumes verified
