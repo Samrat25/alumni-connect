@@ -47,7 +47,7 @@ const Home = () => {
       {/* Main Content */}
       <main className="relative z-10 container mx-auto px-4 py-12">
         {!connected ? (
-          <div className="max-w-4xl mx-auto text-center">
+          <div className="max-w-7xl mx-auto text-center">
             {/* Hero */}
             <LandingHero />
 
