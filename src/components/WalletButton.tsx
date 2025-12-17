@@ -30,7 +30,7 @@ export function WalletButton() {
       >
         {/* Network Badge */}
         <div className={cn(
-          "flex items-center gap-1.5 px-3 py-1.5 rounded-lg text-xs font-medium",
+          "flex items-center gap-1.5 px-3 py-1.5 rounded-md text-xs font-medium",
           network === 'Devnet' 
             ? "bg-success/10 text-success border border-success/20"
             : "bg-warning/10 text-warning border border-warning/20"
@@ -42,7 +42,7 @@ export function WalletButton() {
         {/* Address */}
         <button
           onClick={openExplorer}
-          className="flex items-center gap-2 px-3 py-1.5 rounded-lg bg-card border border-border hover:border-primary/50 transition-colors group"
+          className="flex items-center gap-2 px-3 py-1.5 rounded-md bg-card border border-border hover:border-primary/50 transition-colors group"
         >
           <div className="w-2 h-2 rounded-full bg-success animate-pulse" />
           <span className="text-sm font-medium text-foreground">
@@ -65,7 +65,7 @@ export function WalletButton() {
         variant="gradient"
         onClick={() => setShowModal(true)}
         disabled={connecting}
-        className="gap-2"
+        className="gap-2 rounded-md border border-primary/30 py-3 text-sm font-medium hover:border-primary/50 transition-colors"
       >
         {connecting ? (
           <Loader2 className="w-4 h-4 animate-spin" />

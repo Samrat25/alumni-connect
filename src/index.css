@@ -7,17 +7,17 @@
 @layer base {
   :root {
     --background: oklch(0.9911 0 0);
-    --foreground: oklch(0.2046 0 0);
+    --foreground: oklch(39.042% 0.00004 271.152);
     --card: oklch(0.9911 0 0);
     --card-foreground: oklch(0.2046 0 0);
     --popover: oklch(0.9911 0 0);
     --popover-foreground: oklch(0.4386 0 0);
-    --primary: oklch(0.7668 0.0626 197.2248);
+    --primary: oklch(0.5841 0.1031 171.6359);
     --primary-foreground: oklch(0.2521 0.0059 196.7869);
     --secondary: oklch(0.9940 0 0);
     --secondary-foreground: oklch(0.2046 0 0);
     --muted: oklch(0.9461 0 0);
-    --muted-foreground: oklch(0.2435 0 0);
+    --muted-foreground: oklch(45.316% 0.00005 271.152);
     --accent: oklch(0.9461 0 0);
     --accent-foreground: oklch(0.2435 0 0);
     --destructive: oklch(0.5880 0.0844 83.0981);
@@ -81,6 +81,7 @@
     --gradient-hero: linear-gradient(135deg, oklch(0.7668 0.0626 197.2248) 0%, oklch(0.5841 0.1031 171.6359) 100%);
     --gradient-glass: linear-gradient(135deg, rgba(255,255,255,0.9) 0%, rgba(255,255,255,0.7) 100%);
     --gradient-text: linear-gradient(90deg, transparent 0%, oklch(0.5841 0.1031 171.6359) 100%);
+    --gradient-text2: linear-gradient(90deg, oklch(54.171% 0.00006 271.152) 0%, transparent 100%);
 
     /* Shadows */
     --shadow-glow: 0 0 40px oklch(0.7668 0.0626 197.2248 / 0.2);
@@ -98,11 +99,11 @@
     --popover-foreground: oklch(0.7348 0 0);
     --primary: oklch(0.5841 0.1031 171.6359);
     --primary-foreground: oklch(0.8853 0.0087 196.9996);
-    --secondary: oklch(0.2603 0 0);
+    --secondary: oklch(21.779% 0.00002 271.152);
     --secondary-foreground: oklch(0.9851 0 0);
     --muted: oklch(0.2393 0 0);
     --muted-foreground: oklch(0.7122 0 0);
-    --accent: oklch(0.3132 0 0);
+    --accent: oklch(18.004% 0.00329 17.123);
     --accent-foreground: oklch(0.9851 0 0);
     --destructive: oklch(0.3368 0.0339 77.3204);
     --destructive-foreground: oklch(0.9066 0.0042 91.4496);
@@ -247,6 +248,12 @@
     background-image: var(--gradient-text);
   }
 
+  .gradient-text3 {
+    @apply bg-clip-text text-transparent;
+    -webkit-text-stroke: 1px oklch(54.517% 0.00006 271.152);
+    background-image: var(--gradient-text2);
+  }
+
 
   .gradient-primary {
     background-image: var(--gradient-primary);
@@ -282,7 +289,7 @@
   }
 
   .backstroke {
-    -webkit-text-stroke: 1px oklch(0.7668 0.0626 197.2248);
+    -webkit-text-stroke: 1.3px oklch(54.517% 0.00006 271.152);
     -webkit-text-fill-color: transparent;
     paint-order: stroke fill;
   }

@@ -15,7 +15,7 @@ const buttonVariants = cva(
         secondary: "bg-secondary text-secondary-foreground hover:bg-secondary/80 shadow-sm hover:shadow-md",
         ghost: "hover:bg-accent hover:text-accent-foreground",
         link: "text-primary underline-offset-4 hover:underline",
-        gradient: "bg-gradient-to-r from-primary to-accent text-primary-foreground shadow-lg hover:shadow-xl hover:scale-[1.02] active:scale-[0.98]",
+        gradient: "bg-gradient-to-r from-primary to-accent text-primary-foreground shadow-lg ",
         student: "bg-student text-primary-foreground hover:bg-student/90 shadow-md hover:shadow-lg",
         verifier: "bg-verifier text-primary-foreground hover:bg-verifier/90 shadow-md hover:shadow-lg",
         alumni: "bg-alumni text-accent-foreground hover:bg-alumni/90 shadow-md hover:shadow-lg",

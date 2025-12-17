@@ -11,7 +11,7 @@ export const ThemeToggle = () => {
       whileHover={{ scale: 1.05 }}
       whileTap={{ scale: 0.95 }}
       onClick={toggleTheme}
-      className="relative w-10 h-10 rounded-xl bg-secondary hover:bg-secondary/80 flex items-center justify-center transition-colors border border-border/50"
+      className="relative w-10 h-10 rounded-md bg-secondary hover:bg-secondary/80 flex items-center justify-center transition-colors border border-border/50"
       aria-label="Toggle theme"
     >
       <motion.div
