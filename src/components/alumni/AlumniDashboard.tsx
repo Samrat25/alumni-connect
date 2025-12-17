@@ -3,6 +3,7 @@ import { motion, AnimatePresence } from 'framer-motion';
 import { useWallet } from '@/contexts/WalletContext';
 import { storage } from '@/lib/storage';
 import { aptosTransactions, getExplorerUrl } from '@/lib/aptos';
+import { uploadJobToIPFS, JobIPFSData } from '@/lib/ipfs';
 import { Student, Job, Application } from '@/lib/types';
 import { Button } from '@/components/ui/button';
 import { StatusBadge } from '@/components/StatusBadge';
@@ -72,11 +73,35 @@ export function AlumniDashboard() {
     setIsCreating(true);
     const toastId = showTransactionToast({
       type: 'pending',
-      message: 'Waiting for wallet signature to create job...'
+      message: 'Uploading job to IPFS...'
     });
 
     try {
       const jobId = `job_${Date.now()}_${Math.random().toString(36).slice(2, 8)}`;
+
+      // Upload job data to Pinata IPFS
+      const jobIPFSData: JobIPFSData = {
+        jobId,
+        title: jobForm.title,
+        company: jobForm.company,
+        location: jobForm.location,
+        type: jobForm.type,
+        description: jobForm.description,
+        requirements: jobForm.requirements.split('\n').filter((r) => r.trim()),
+        postedBy: address,
+        postedByName: 'Alumni',
+        postedAt: new Date().toISOString(),
+      };
+
+      console.log('📤 Uploading job to Pinata IPFS...');
+      const ipfsResult = await uploadJobToIPFS(jobIPFSData);
+      console.log('✅ Job uploaded to IPFS:', ipfsResult);
+
+      dismissToast(toastId);
+      const signToastId = showTransactionToast({
+        type: 'pending',
+        message: 'Waiting for wallet signature to create job...'
+      });
 
       // Sign transaction with Petra wallet - this will trigger Petra's popup
       const tx = await aptosTransactions.createJob(
@@ -87,7 +112,7 @@ export function AlumniDashboard() {
         address
       );
 
-      dismissToast(toastId);
+      dismissToast(signToastId);
       showTransactionToast({
         type: 'success',
         message: 'Job posted on-chain!',
@@ -109,6 +134,8 @@ export function AlumniDashboard() {
         shortlisted: [],
         referred: [],
         txHash: tx.hash,
+        ipfsCid: ipfsResult.cid,
+        ipfsUrl: ipfsResult.url,
       };
 
       storage.saveJob(newJob);
@@ -383,17 +410,31 @@ export function AlumniDashboard() {
                         {job.referred.length} referred
                       </span>
                     </div>
-                    {job.txHash && (
-                      <a
-                        href={getExplorerUrl(job.txHash)}
-                        target="_blank"
-                        rel="noopener noreferrer"
-                        onClick={(e) => e.stopPropagation()}
-                        className="text-xs text-primary hover:underline flex items-center gap-1"
-                      >
-                        <ExternalLink className="w-3 h-3" />
-                      </a>
-                    )}
+                    <div className="flex items-center gap-2">
+                      {job.ipfsCid && (
+                        <a
+                          href={job.ipfsUrl || `https://gateway.pinata.cloud/ipfs/${job.ipfsCid}`}
+                          target="_blank"
+                          rel="noopener noreferrer"
+                          onClick={(e) => e.stopPropagation()}
+                          className="text-xs text-muted-foreground hover:text-primary flex items-center gap-1"
+                          title="View on IPFS"
+                        >
+                          IPFS
+                        </a>
+                      )}
+                      {job.txHash && (
+                        <a
+                          href={getExplorerUrl(job.txHash)}
+                          target="_blank"
+                          rel="noopener noreferrer"
+                          onClick={(e) => e.stopPropagation()}
+                          className="text-xs text-primary hover:underline flex items-center gap-1"
+                        >
+                          <ExternalLink className="w-3 h-3" />
+                        </a>
+                      )}
+                    </div>
                   </div>
                 </motion.button>
               ))

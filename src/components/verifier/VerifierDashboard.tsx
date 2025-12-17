@@ -232,10 +232,38 @@ export function VerifierDashboard() {
 
               {/* Resume Info */}
               <div className="p-4 rounded-xl bg-muted/50 space-y-3">
-                <p className="text-xs text-muted-foreground mb-1">Resume File</p>
-                <p className="font-medium text-foreground text-sm mb-3">
-                  {selectedStudent.resumeFileName}
-                </p>
+                <div className="flex items-center justify-between">
+                  <div>
+                    <p className="text-xs text-muted-foreground mb-1">Resume File</p>
+                    <p className="font-medium text-foreground text-sm">
+                      {selectedStudent.resumeFileName}
+                    </p>
+                  </div>
+                  {selectedStudent.ipfsCid && (
+                    <a
+                      href={selectedStudent.ipfsUrl || `https://aqua-imperial-narwhal-462.mypinata.cloud/ipfs/${selectedStudent.ipfsCid}`}
+                      target="_blank"
+                      rel="noopener noreferrer"
+                      className="px-3 py-1.5 bg-primary text-primary-foreground rounded-lg text-xs font-medium hover:bg-primary/90 transition-colors flex items-center gap-1"
+                    >
+                      <ExternalLink className="w-3 h-3" />
+                      View Resume
+                    </a>
+                  )}
+                </div>
+                
+                {selectedStudent.ipfsCid && (
+                  <div className="flex items-start gap-2">
+                    <Hash className="w-4 h-4 text-muted-foreground mt-0.5" />
+                    <div>
+                      <p className="text-xs text-muted-foreground mb-1">IPFS CID (Pinata)</p>
+                      <code className="text-xs font-mono text-foreground break-all">
+                        {selectedStudent.ipfsCid}
+                      </code>
+                    </div>
+                  </div>
+                )}
+                
                 <div className="flex items-start gap-2">
                   <Hash className="w-4 h-4 text-muted-foreground mt-0.5" />
                   <div>

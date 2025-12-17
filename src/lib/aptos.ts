@@ -4,6 +4,28 @@ import { Aptos, AptosConfig, Network } from '@aptos-labs/ts-sdk';
 const config = new AptosConfig({ network: Network.DEVNET });
 export const aptos = new Aptos(config);
 
+// Contract address on Devnet
+export const CONTRACT_ADDRESS =
+  '0xd825ff93605363709e2a2878e997bb5e05e6136b3d9bdab40898e7ed01bbe3fd';
+export const MODULE_NAME = 'chainrefer';
+
+// Authorized verifier addresses (college admins)
+// Add your wallet address here to be able to verify resumes
+export const AUTHORIZED_VERIFIERS: string[] = [
+  '0x22043f7ea8343ba848d559dd351eaf2284fdba4e78d959149ab208fc40c5eb9d', // Initial verifier from contract deployment
+  // Add more verifier addresses below:
+  // '0xYOUR_WALLET_ADDRESS_HERE',
+];
+
+// Check if an address is an authorized verifier
+export const isAuthorizedVerifier = (address: string): boolean => {
+  if (!address) return false;
+  const normalizedAddress = address.toLowerCase();
+  return AUTHORIZED_VERIFIERS.some(
+    (v) => v.toLowerCase() === normalizedAddress
+  );
+};
+
 // Transaction types for our app
 export type TransactionType = 
   | 'submit_resume' 

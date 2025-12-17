@@ -1,7 +1,10 @@
+import { useState } from 'react';
 import { motion } from 'framer-motion';
 import { WalletButton } from './WalletButton';
 import { RoleSelector } from './RoleSelector';
+import { QRScanner } from './QRScanner';
 import { useWallet } from '@/contexts/WalletContext';
+import { Button } from '@/components/ui/button';
 import {
   Shield,
   Link2,
@@ -9,6 +12,7 @@ import {
   CheckCircle,
   Blocks,
   GraduationCap,
+  ScanLine,
 } from 'lucide-react';
 
 const features = [
@@ -31,6 +35,7 @@ const features = [
 
 export function LandingHero() {
   const { connected } = useWallet();
+  const [showScanner, setShowScanner] = useState(false);
 
   return (
     <div className="min-h-screen bg-background relative overflow-hidden">
@@ -83,10 +88,18 @@ export function LandingHero() {
 
               <div className="flex flex-col sm:flex-row items-center justify-center gap-4">
                 <WalletButton />
-                <p className="text-sm text-muted-foreground">
-                  Connect with Petra Wallet to get started
-                </p>
+                <Button
+                  variant="outline"
+                  onClick={() => setShowScanner(true)}
+                  className="gap-2"
+                >
+                  <ScanLine className="w-4 h-4" />
+                  Scan Student QR
+                </Button>
               </div>
+              <p className="text-sm text-muted-foreground mt-4">
+                Connect with Petra Wallet to get started, or scan a student QR code
+              </p>
             </motion.div>
 
             {/* Features */}
@@ -177,6 +190,9 @@ export function LandingHero() {
           </p>
         </div>
       </footer>
+
+      {/* QR Scanner Modal */}
+      <QRScanner isOpen={showScanner} onClose={() => setShowScanner(false)} />
     </div>
   );
 }

@@ -1,0 +1,17 @@
+[package]
+name = "ChainRefer"
+version = "1.0.0"
+authors = []
+
+[addresses]
+chainrefer = "_"
+
+[dev-addresses]
+chainrefer = "0x1234567890abcdef1234567890abcdef1234567890abcdef1234567890abcdef"
+
+[dependencies.AptosFramework]
+git = "https://github.com/aptos-labs/aptos-core.git"
+rev = "mainnet"
+subdir = "aptos-move/framework/aptos-framework"
+
+[dev-dependencies]

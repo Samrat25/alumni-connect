@@ -109,8 +109,13 @@ export function RoleSelector() {
 
               {/* Warning for verifier */}
               {role.id === 'verifier' && !isVerifier && address && (
-                <p className="text-xs text-warning mt-3">
-                  Your wallet is not the designated verifier
+                <p className="text-xs text-destructive mt-3">
+                  ⚠️ Your wallet is not authorized as a verifier
+                </p>
+              )}
+              {role.id === 'verifier' && isVerifier && address && (
+                <p className="text-xs text-success mt-3">
+                  ✓ Authorized verifier wallet
                 </p>
               )}
             </motion.button>

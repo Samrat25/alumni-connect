@@ -3,6 +3,8 @@ import { motion } from 'framer-motion';
 import { useWallet } from '@/contexts/WalletContext';
 import { storage } from '@/lib/storage';
 import { aptosTransactions, getExplorerUrl } from '@/lib/aptos';
+import { generateStudentQRCode, StudentQRData } from '@/lib/qrcode';
+import { uploadToIPFS, uploadFileToIPFS, StudentIPFSData } from '@/lib/ipfs';
 import { Student, Job } from '@/lib/types';
 import { Button } from '@/components/ui/button';
 import { StatusBadge } from '@/components/StatusBadge';
@@ -22,6 +24,8 @@ import {
   ArrowLeft,
   ExternalLink,
   Hash,
+  QrCode,
+  Download,
 } from 'lucide-react';
 import { cn } from '@/lib/utils';
 
@@ -29,9 +33,11 @@ export function StudentDashboard() {
   const { address, setRole, signAndSubmitTransaction } = useWallet();
   const [student, setStudent] = useState<Student | null>(null);
   const [jobs, setJobs] = useState<Job[]>([]);
-  const [activeTab, setActiveTab] = useState<'profile' | 'jobs'>('profile');
+  const [activeTab, setActiveTab] = useState<'profile' | 'jobs' | 'qrcode'>('profile');
   const [isUploading, setIsUploading] = useState(false);
   const [isApplying, setIsApplying] = useState<string | null>(null);
+  const [qrCodeData, setQrCodeData] = useState<{ qrCodeUrl: string; dataHash: string; ipfsCid: string } | null>(null);
+  const [isGeneratingQR, setIsGeneratingQR] = useState(false);
 
   // Form state
   const [formData, setFormData] = useState({
@@ -75,38 +81,48 @@ export function StudentDashboard() {
     setIsUploading(true);
     const toastId = showTransactionToast({
       type: 'pending',
-      message: 'Waiting for wallet signature...'
+      message: 'Uploading resume to IPFS...'
     });
 
     try {
-      // Generate hash from file
-      const hash = await storage.generateHash(resumeFile);
+      // Upload resume file to Pinata IPFS
+      console.log('📤 Uploading resume to Pinata IPFS...');
+      const ipfsResult = await uploadFileToIPFS(resumeFile);
+      console.log('✅ Resume uploaded to IPFS:', ipfsResult);
+
+      dismissToast(toastId);
+      const signToastId = showTransactionToast({
+        type: 'pending',
+        message: 'Waiting for wallet signature...'
+      });
 
       // Sign transaction with Petra wallet - this will trigger Petra's popup
       const tx = await aptosTransactions.submitResume(
-        hash,
+        ipfsResult.hash,
         formData.name,
         signAndSubmitTransaction,
         address
       );
 
-      dismissToast(toastId);
+      dismissToast(signToastId);
       showTransactionToast({
         type: 'success',
         message: 'Resume submitted on-chain!',
         txHash: tx.hash
       });
 
-      // Save student data
+      // Save student data with IPFS CID
       const newStudent: Student = {
         walletAddress: address,
         ...formData,
         resumeFileName: resumeFile.name,
-        resumeHash: hash,
+        resumeHash: ipfsResult.hash,
         resumeStatus: 'unverified',
         submittedAt: new Date().toISOString(),
         appliedJobs: student?.appliedJobs || [],
         txHash: tx.hash,
+        ipfsCid: ipfsResult.cid,
+        ipfsUrl: ipfsResult.url,
       };
 
       storage.saveStudent(newStudent);
@@ -229,6 +245,20 @@ export function StudentDashboard() {
           <Briefcase className="w-4 h-4 inline-block mr-2" />
           Browse Jobs
         </button>
+        {student?.resumeHash && (
+          <button
+            onClick={() => setActiveTab('qrcode')}
+            className={cn(
+              'px-4 py-2 rounded-md text-sm font-medium transition-all',
+              activeTab === 'qrcode'
+                ? 'bg-card text-foreground shadow-sm'
+                : 'text-muted-foreground hover:text-foreground'
+            )}
+          >
+            <QrCode className="w-4 h-4 inline-block mr-2" />
+            My QR Code
+          </button>
+        )}
       </div>
 
       {/* Profile Tab */}
@@ -332,6 +362,24 @@ export function StudentDashboard() {
                       {student.resumeHash.slice(0, 32)}...
                     </code>
                   </div>
+
+                  {student.ipfsCid && (
+                    <div>
+                      <p className="text-xs text-muted-foreground mb-1 flex items-center gap-1">
+                        <Hash className="w-3 h-3" />
+                        IPFS CID (Pinata)
+                      </p>
+                      <a
+                        href={student.ipfsUrl || `https://gateway.pinata.cloud/ipfs/${student.ipfsCid}`}
+                        target="_blank"
+                        rel="noopener noreferrer"
+                        className="inline-flex items-center gap-1 text-xs text-primary hover:underline font-mono"
+                      >
+                        {student.ipfsCid.slice(0, 20)}...
+                        <ExternalLink className="w-3 h-3" />
+                      </a>
+                    </div>
+                  )}
                   
                   {student.txHash && (
                     <div>
@@ -517,6 +565,161 @@ export function StudentDashboard() {
               );
             })
           )}
+        </motion.div>
+      )}
+
+      {/* QR Code Tab */}
+      {activeTab === 'qrcode' && student && (
+        <motion.div
+          initial={{ opacity: 0, y: 10 }}
+          animate={{ opacity: 1, y: 0 }}
+          className="max-w-md mx-auto"
+        >
+          <div className="bg-card rounded-2xl p-6 border border-border/50 shadow-sm">
+            <h3 className="text-lg font-semibold text-foreground mb-4 text-center">
+              Your Student QR Code
+            </h3>
+            
+            <p className="text-sm text-muted-foreground text-center mb-6">
+              This QR code contains your encoded student data and resume hash. 
+              Share it with verifiers or employers for quick verification.
+            </p>
+
+            {qrCodeData ? (
+              <div className="space-y-4">
+                <div className="flex justify-center">
+                  <div className="p-4 bg-white rounded-xl shadow-sm">
+                    <img 
+                      src={qrCodeData.qrCodeUrl} 
+                      alt="Student QR Code" 
+                      className="w-64 h-64"
+                    />
+                  </div>
+                </div>
+
+                <div className="p-4 rounded-xl bg-muted/50 space-y-3">
+                  <div>
+                    <p className="text-xs text-muted-foreground mb-1 flex items-center gap-1">
+                      <Hash className="w-3 h-3" />
+                      IPFS CID
+                    </p>
+                    <code className="text-xs font-mono text-foreground break-all">
+                      {qrCodeData.ipfsCid}
+                    </code>
+                  </div>
+                  
+                  <div>
+                    <p className="text-xs text-muted-foreground mb-1 flex items-center gap-1">
+                      <Hash className="w-3 h-3" />
+                      Data Hash (SHA-256)
+                    </p>
+                    <code className="text-xs font-mono text-foreground break-all">
+                      {qrCodeData.dataHash.slice(0, 32)}...
+                    </code>
+                  </div>
+                  
+                  <div>
+                    <p className="text-xs text-muted-foreground mb-1">Student Info</p>
+                    <p className="text-xs text-foreground">
+                      Name: {student.name}<br />
+                      Status: <StatusBadge status={student.resumeStatus} className="inline-flex" />
+                    </p>
+                  </div>
+                </div>
+
+                <Button
+                  variant="outline"
+                  className="w-full"
+                  onClick={() => {
+                    const link = document.createElement('a');
+                    link.download = `student-qr-${student.name.replace(/\s+/g, '-')}.png`;
+                    link.href = qrCodeData.qrCodeUrl;
+                    link.click();
+                  }}
+                >
+                  <Download className="w-4 h-4 mr-2" />
+                  Download QR Code
+                </Button>
+              </div>
+            ) : (
+              <div className="space-y-4">
+                <div className="flex justify-center">
+                  <div className="w-64 h-64 bg-muted rounded-xl flex items-center justify-center">
+                    <QrCode className="w-16 h-16 text-muted-foreground" />
+                  </div>
+                </div>
+
+                <Button
+                  variant="student"
+                  className="w-full"
+                  onClick={async () => {
+                    if (!student || !address) return;
+                    setIsGeneratingQR(true);
+                    try {
+                      // Upload student data to IPFS
+                      const ipfsData: StudentIPFSData = {
+                        walletAddress: address,
+                        name: student.name,
+                        email: student.email,
+                        college: student.college,
+                        department: student.department,
+                        graduationYear: student.graduationYear,
+                        resumeHash: student.resumeHash || '',
+                        resumeFileName: student.resumeFileName || '',
+                        verificationStatus: student.resumeStatus,
+                        submittedAt: student.submittedAt || new Date().toISOString(),
+                        verifiedAt: student.verifiedAt,
+                        verifiedBy: student.verifiedBy,
+                      };
+                      
+                      const ipfsResult = await uploadToIPFS(ipfsData);
+                      console.log('Uploaded to IPFS:', ipfsResult);
+                      
+                      // Generate QR code with IPFS CID
+                      const qrData: StudentQRData = {
+                        walletAddress: address,
+                        name: student.name,
+                        email: student.email,
+                        college: student.college,
+                        department: student.department,
+                        graduationYear: student.graduationYear,
+                        resumeHash: student.resumeHash || '',
+                        verificationStatus: student.resumeStatus,
+                        timestamp: new Date().toISOString(),
+                      };
+                      const result = await generateStudentQRCode(qrData, ipfsResult.cid);
+                      
+                      // Include IPFS CID in QR data
+                      setQrCodeData({
+                        ...result,
+                        ipfsCid: ipfsResult.cid,
+                      });
+                      
+                      toast.success('QR Code generated and data stored on IPFS!');
+                    } catch (error) {
+                      console.error('Error generating QR:', error);
+                      toast.error('Failed to generate QR code');
+                    } finally {
+                      setIsGeneratingQR(false);
+                    }
+                  }}
+                  disabled={isGeneratingQR}
+                >
+                  {isGeneratingQR ? (
+                    <>
+                      <Loader2 className="w-4 h-4 animate-spin mr-2" />
+                      Uploading to IPFS...
+                    </>
+                  ) : (
+                    <>
+                      <QrCode className="w-4 h-4 mr-2" />
+                      Generate QR Code & Store on IPFS
+                    </>
+                  )}
+                </Button>
+              </div>
+            )}
+          </div>
         </motion.div>
       )}
     </div>
