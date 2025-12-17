@@ -19,6 +19,8 @@ export interface Student {
   appliedJobs: string[];
   txHash?: string;
   verificationTxHash?: string;
+  ipfsCid?: string;
+  ipfsUrl?: string;
 }
 
 export interface Job {
@@ -36,6 +38,8 @@ export interface Job {
   shortlisted: string[];
   referred: string[];
   txHash?: string;
+  ipfsCid?: string;
+  ipfsUrl?: string;
 }
 
 export interface Application {

@@ -1,7 +1,7 @@
 import React, { createContext, useContext, useState, useCallback } from 'react';
 import { useWallet as useAptosWallet } from '@aptos-labs/wallet-adapter-react';
 import { UserRole } from '@/lib/types';
-import { storage } from '@/lib/storage';
+import { isAuthorizedVerifier } from '@/lib/aptos';
 
 interface WalletContextType {
   connected: boolean;
@@ -38,10 +38,8 @@ export function WalletProvider({ children }: { children: React.ReactNode }) {
   const connected = aptosConnected;
   const connecting = isConnecting;
 
-  const verifierAddress = storage.getVerifierAddress();
-  const isVerifier = address && verifierAddress 
-    ? address.toLowerCase() === verifierAddress.toLowerCase() 
-    : false;
+  // Check if connected wallet is an authorized verifier
+  const isVerifier = address ? isAuthorizedVerifier(address) : false;
 
   // Connect to wallet - this will trigger Petra's popup
   const connect = useCallback(async () => {
