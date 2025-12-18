@@ -9,8 +9,9 @@ import {
 
 const Navbar = () => {
   return (
-    <header className="fixed top-4 mx-auto z-40 w-full h-16">
-      <div className="container px-4 flex items-center justify-between">
+    <header className="fixed top-0 mx-auto z-40 w-full h-16 pt-6">
+      <div className="fixed top-0 left-0 right-0 h-24 bg-gradient-to-b from-background via-background/50 to-transparent pointer-events-none z-0"></div>
+      <div className="container px-4 flex items-center justify-between relative z-10">
         <div className="flex items-center gap-3">
           <div className="w-8 h-8 rounded-sm gradient-primary flex items-center justify-center">
             <GraduationCap className="w-6 h-6 text-secondary" />

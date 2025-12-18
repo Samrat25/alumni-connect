@@ -53,7 +53,7 @@ const WorkProcess = () => {
       initial={{ opacity: 0, y: 20 }}
       animate={{ opacity: 1, y: 0 }}
       transition={{ duration: 0.6, delay: 0.4 }}
-      className="rounded-2xl p-8 overflow-x-hidden"
+      className="rounded-2xl p-8 overflow-x-hidden mb-20"
     >
       <div className="mb-10 mx-auto text-center">
         <h1 className="text-3xl sm:text-4xl lg:text-5xl font-bold  mb-4 leading-tight text-foreground">
@@ -87,7 +87,7 @@ const WorkProcess = () => {
             </p>
           </div>
         </div>
-        
+
         {/* Process Connectors */}
         <div className="svgConnector1 w-full flex justify-center items-center -my-8">
           <div className="w-[60%] max-w-[500px]">
