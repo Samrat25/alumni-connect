@@ -3,12 +3,7 @@ import { motion } from "framer-motion";
 import { WalletButton } from "../WalletButton";
 import { useTheme } from "@/contexts/ThemeContext";
 import {
-  Shield,
-  Link2,
-  Users,
-  CheckCircle,
-  Blocks,
-  GraduationCap,
+  Blocks
 } from "lucide-react";
 
 const LandingHero = () => {
@@ -19,7 +14,7 @@ const LandingHero = () => {
       initial={{ opacity: 0, y: 20 }}
       animate={{ opacity: 1, y: 0 }}
       transition={{ duration: 0.6 }}
-      className="mb-36 mt-24 w-full"
+      className="mb-36 mt-24 w-full text-center"
     >
       <div className="upperHero container mx-auto px-4">
         <div className="inline-flex items-center gap-2 px-4 py-[6px] rounded-full bg-[#248f74]/5 text-primary text-sm font-medium mb-6 border">

@@ -12,8 +12,8 @@ const Navbar = () => {
     <header className="fixed top-4 mx-auto z-40 w-full h-16">
       <div className="container px-4 flex items-center justify-between">
         <div className="flex items-center gap-3">
-          <div className="w-8 h-8 rounded-sm gradient-hero flex items-center justify-center">
-            <GraduationCap className="w-6 h-6 text-primary-foreground" />
+          <div className="w-8 h-8 rounded-sm gradient-primary flex items-center justify-center">
+            <GraduationCap className="w-6 h-6 text-secondary" />
           </div>
           <div>
             <h1 className="font-bold text-foreground text-2xl">ChainRefer.</h1>
@@ -23,14 +23,14 @@ const Navbar = () => {
           <NavLink 
             to="/" 
             className="text-md font-medium text-muted-foreground hover:text-foreground transition-colors"
-            activeClassName="text-foreground font-semibold"
+            activeClassName="text-primary font-semibold"
           >
             Home
           </NavLink>
           <NavLink 
             to="/about" 
             className="text-md font-medium text-muted-foreground hover:text-foreground transition-colors"
-            activeClassName="text-foreground font-semibold"
+            activeClassName="text-primary font-semibold"
           >
             About
           </NavLink>

@@ -26,13 +26,13 @@ const Features = () => {
       initial={{ opacity: 0, y: 20 }}
       animate={{ opacity: 1, y: 0 }}
       transition={{ duration: 0.6, delay: 0.2 }}
-      className="mb-40 min-h-[600px] w-full px-4"
+      className="mb-36 min-h-[600px] w-full px-4 mx-auto text-center"
     >
       <h1 className="text-3xl sm:text-4xl lg:text-5xl font-bold  mb-4 leading-tight text-foreground">
         Features  <span className="gradient-text3">that Feels </span>Human
       </h1>
       <p className="text-lg text-muted-foreground max-w-2xl mx-auto mb-10 tracking-tight">
-        It amplifies human insight and recommendations, to help incredible
+        ChainRefer amplifies human insight and recommendations, to help incredible
         people find each other.
       </p>
       <div className="grid sm:grid-cols-3 gap-6">
