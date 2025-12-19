@@ -7,7 +7,7 @@ const Footer = () => {
     <footer className="relative z-10 mt-auto px-20 py-12">
       <div className="flex flex-col md:flex-row gap-6 min-h-[500px] shadow-sm shadow-glow/10">
         {/* Left Box - Primary Color */}
-        <div className="w-full md:w-[35%] bg-[#1e7a63] p-12 flex flex-col justify-between rounded-md border shadow-md shadow-gray-600/20">
+        <div className="w-full md:w-[35%] bg-[#1a7861] p-12 flex flex-col justify-between rounded-md border shadow-md shadow-gray-600/20">
           <div>
             <div className="flex items-center gap-3 mb-6">
               <div className="w-12 h-12 rounded-sm bg-background flex items-center justify-center">
@@ -108,7 +108,7 @@ const Footer = () => {
             {/* Bottom Right - Copyright */}
             <div className="flex items-end justify-end">
               <p className="text-sm text-muted-foreground">
-                ©2025 ChainRefer. All rights Reserved.
+                Built with 💚 by Team COSMO BLOCKS.
               </p>
             </div>
           </div>
